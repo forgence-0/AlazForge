@@ -31,3 +31,5 @@ build/tests/alazforge_test_falling_cube
 
 - [Jolt Physics](https://github.com/jrouwe/JoltPhysics) — MIT License,
   Copyright (c) Jorrit Rouwe. Tam lisans metni: `external/JoltPhysics/LICENSE`
+- [LZ4](https://github.com/lz4/lz4) — BSD 2-Clause License,
+  Copyright (c) Yann Collet. Tam lisans metni: `external/lz4/lib/LICENSE`

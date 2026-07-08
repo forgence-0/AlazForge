@@ -10,3 +10,7 @@ Third-party notice:
 
 This project uses Jolt Physics (external/JoltPhysics), which is licensed
 under the MIT License. See external/JoltPhysics/LICENSE for the full text.
+
+This project uses LZ4 (external/lz4), whose library files are licensed
+under the BSD 2-Clause License. See external/lz4/lib/LICENSE for the
+full text.

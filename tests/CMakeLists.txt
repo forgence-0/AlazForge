@@ -2,3 +2,8 @@ add_executable(alazforge_test_falling_cube FallingCubeTest.cpp)
 target_link_libraries(alazforge_test_falling_cube PRIVATE alazforge_core)
 
 add_test(NAME falling_cube COMMAND alazforge_test_falling_cube)
+
+add_executable(alazforge_test_chunk_stream ChunkStreamTest.cpp)
+target_link_libraries(alazforge_test_chunk_stream PRIVATE alazforge_core)
+
+add_test(NAME chunk_stream COMMAND alazforge_test_chunk_stream)

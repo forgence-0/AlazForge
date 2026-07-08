@@ -7,3 +7,8 @@ add_executable(alazforge_test_chunk_stream ChunkStreamTest.cpp)
 target_link_libraries(alazforge_test_chunk_stream PRIVATE alazforge_core)
 
 add_test(NAME chunk_stream COMMAND alazforge_test_chunk_stream)
+
+add_executable(alazforge_test_terrain_deform TerrainDeformTest.cpp)
+target_link_libraries(alazforge_test_terrain_deform PRIVATE alazforge_core)
+
+add_test(NAME terrain_deform COMMAND alazforge_test_terrain_deform)

@@ -14,9 +14,20 @@ edilir, kendi mimarisiyle genişletilir.
 | `src/terrain_deform` | Chunk tabanlı terrain deformasyon sistemi |
 | `src/ballistics` | Raycasting tabanlı mermi/balistik sistemi |
 | `src/material_db` | Malzeme özellikleri: sertlik, penetrasyon, kırılma |
-| `src/vehicle` | Araç fiziği, ağır vasıta genişletmeleri |
+| `src/vehicle` | Araç fiziği (tekerlekli + paletli) ve enkaz kalıcılığı |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
+
+## Durum
+
+Altı fazın tamamı çalışır durumda ve testleri geçiyor (`ctest`):
+
+1. **Temel kurulum** — Jolt entegrasyonu, adapter katmanı, düşen küp testi
+2. **Spatial streaming** — `ChunkStreamSystem<T>`, sparse LZ4 chunk depolama
+3. **Terrain deformasyon** — grid tabanlı çökme (64m chunk / 25cm hücre)
+4. **Balistik + malzeme DB** — mermi düşüşü, penetrasyon, sekme
+5. **Araç fiziği** — çok akslı tekerlekli + paletli (skid-steer) ağır vasıta
+6. **Enkaz kalıcılığı** — aynı streaming altyapısıyla hasarlı araç saklama
 
 ## Build
 

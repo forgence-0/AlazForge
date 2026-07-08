@@ -22,3 +22,8 @@ add_executable(alazforge_test_vehicle VehicleTest.cpp)
 target_link_libraries(alazforge_test_vehicle PRIVATE alazforge_core)
 
 add_test(NAME vehicle COMMAND alazforge_test_vehicle)
+
+add_executable(alazforge_test_wreck WreckPersistenceTest.cpp)
+target_link_libraries(alazforge_test_wreck PRIVATE alazforge_core)
+
+add_test(NAME wreck_persistence COMMAND alazforge_test_wreck)

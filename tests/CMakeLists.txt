@@ -12,3 +12,8 @@ add_executable(alazforge_test_terrain_deform TerrainDeformTest.cpp)
 target_link_libraries(alazforge_test_terrain_deform PRIVATE alazforge_core)
 
 add_test(NAME terrain_deform COMMAND alazforge_test_terrain_deform)
+
+add_executable(alazforge_test_ballistics BallisticsTest.cpp)
+target_link_libraries(alazforge_test_ballistics PRIVATE alazforge_core)
+
+add_test(NAME ballistics COMMAND alazforge_test_ballistics)

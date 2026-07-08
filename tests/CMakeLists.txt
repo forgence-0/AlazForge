@@ -17,3 +17,8 @@ add_executable(alazforge_test_ballistics BallisticsTest.cpp)
 target_link_libraries(alazforge_test_ballistics PRIVATE alazforge_core)
 
 add_test(NAME ballistics COMMAND alazforge_test_ballistics)
+
+add_executable(alazforge_test_vehicle VehicleTest.cpp)
+target_link_libraries(alazforge_test_vehicle PRIVATE alazforge_core)
+
+add_test(NAME vehicle COMMAND alazforge_test_vehicle)

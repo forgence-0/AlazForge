@@ -107,6 +107,17 @@ public:
         return id;
     }
 
+    // Fiziği bir adım ilerletir (dahili allocator + job system ile)
+    void Step(float deltaTime, int collisionSteps = 1) {
+        physics.Update(deltaTime, collisionSteps, tempAllocator.get(), jobSystem.get());
+    }
+
+    // Büyük statik zemin ekler, üst yüzeyi y=0
+    JPH::BodyID AddGround(float halfSize = 200.0f, JPH::uint64 materialId = 0) {
+        return AddStaticBox(JPH::RVec3(0.0, -1.0, 0.0),
+                            JPH::Vec3(halfSize, 1.0f, halfSize), materialId);
+    }
+
     JPH::PhysicsSystem physics;
 
 private:

@@ -1,0 +1,4 @@
+add_executable(alazforge_test_falling_cube FallingCubeTest.cpp)
+target_link_libraries(alazforge_test_falling_cube PRIVATE alazforge_core)
+
+add_test(NAME falling_cube COMMAND alazforge_test_falling_cube)

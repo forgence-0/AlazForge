@@ -27,3 +27,38 @@ add_executable(alazforge_test_wreck WreckPersistenceTest.cpp)
 target_link_libraries(alazforge_test_wreck PRIVATE alazforge)
 
 add_test(NAME wreck_persistence COMMAND alazforge_test_wreck)
+
+add_executable(alazforge_test_recoil RecoilImpulseTest.cpp)
+target_link_libraries(alazforge_test_recoil PRIVATE alazforge)
+
+add_test(NAME recoil_impulse COMMAND alazforge_test_recoil)
+
+add_executable(alazforge_test_spread SpreadAccumulatorTest.cpp)
+target_link_libraries(alazforge_test_spread PRIVATE alazforge)
+
+add_test(NAME spread_accumulator COMMAND alazforge_test_spread)
+
+add_executable(alazforge_test_turret_mount TurretMountTest.cpp)
+target_link_libraries(alazforge_test_turret_mount PRIVATE alazforge)
+
+add_test(NAME turret_mount COMMAND alazforge_test_turret_mount)
+
+add_executable(alazforge_test_buoyancy BuoyancySystemTest.cpp)
+target_link_libraries(alazforge_test_buoyancy PRIVATE alazforge)
+
+add_test(NAME buoyancy COMMAND alazforge_test_buoyancy)
+
+add_executable(alazforge_test_destructible DestructibleStructureTest.cpp)
+target_link_libraries(alazforge_test_destructible PRIVATE alazforge)
+
+add_test(NAME destructible_structure COMMAND alazforge_test_destructible)
+
+add_executable(alazforge_test_ragdoll RagdollTest.cpp)
+target_link_libraries(alazforge_test_ragdoll PRIVATE alazforge)
+
+add_test(NAME ragdoll COMMAND alazforge_test_ragdoll)
+
+add_executable(alazforge_test_context AlazForgeContextTest.cpp)
+target_link_libraries(alazforge_test_context PRIVATE alazforge)
+
+add_test(NAME alazforge_context COMMAND alazforge_test_context)

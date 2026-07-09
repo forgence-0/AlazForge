@@ -44,6 +44,9 @@ struct ImpactEvent {
     float impactSpeed = 0.0f;     // m/s, temas anındaki hız
     float remainingSpeed = 0.0f;  // m/s, olay sonrası hız (Embed'de 0)
     float grazingAngleDeg = 0.0f; // yüzeye göre sıyırma açısı
+    // Vurulan gövdenin id'si — DestructibleStructureSystem::FindPieceByBodyID
+    // gibi tüketicilerin vuruşu bir parçaya/nesneye bağlayabilmesi için.
+    JPH::BodyID hitBody;
 };
 
 struct BulletSimResult {

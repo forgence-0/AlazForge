@@ -83,6 +83,7 @@ bool BallisticsSystem::ResolveImpact(const BulletParams& bullet, JPH::BodyID bod
     ev.material = matId;
     ev.impactSpeed = speed;
     ev.grazingAngleDeg = grazingDeg;
+    ev.hitBody = bodyId;
 
     const MaterialProperties* mat =
         (matId != kInvalidMaterial && matId < materials.Count()) ? &materials.Get(matId) : nullptr;

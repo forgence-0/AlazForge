@@ -33,6 +33,12 @@ add_library(alazforge SHARED
     src/vehicle/WreckPersistence.cpp
     src/vehicle/VehicleSystem.cpp
     src/ballistics/BallisticsSystem.cpp
+    src/weapons/TurretMount.cpp
+    src/buoyancy/BuoyancySystem.cpp
+    src/destructible/DestructibleStructureSystem.cpp
+    src/ragdoll/RagdollSkeleton.cpp
+    src/ragdoll/RagdollInstance.cpp
+    src/context/AlazForgeContext.cpp
 )
 
 target_include_directories(alazforge PUBLIC

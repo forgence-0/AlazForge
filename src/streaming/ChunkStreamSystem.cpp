@@ -5,6 +5,7 @@
 
 #include "streaming/ChunkStreamSystem.h"
 
+#include "destructible/DestructibleChunkData.h"
 #include "terrain_deform/TerrainDeformSystem.h"
 #include "vehicle/WreckPersistence.h"
 
@@ -12,5 +13,6 @@ namespace alazforge {
 
 template class ALAZFORGE_API ChunkStreamSystem<DeformationChunkData>;
 template class ALAZFORGE_API ChunkStreamSystem<WreckChunkData>;
+template class ALAZFORGE_API ChunkStreamSystem<DestructibleChunkData>;
 
 } // namespace alazforge

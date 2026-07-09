@@ -15,12 +15,17 @@ edilir, kendi mimarisiyle genişletilir.
 | `src/ballistics` | Raycasting tabanlı mermi/balistik sistemi |
 | `src/material_db` | Malzeme özellikleri: sertlik, penetrasyon, kırılma |
 | `src/vehicle` | Araç fiziği (tekerlekli + paletli) ve enkaz kalıcılığı |
+| `src/weapons` | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
+| `src/buoyancy` | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
+| `src/destructible` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
+| `src/ragdoll` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
+| `src/context` | `AlazForgeContext` — Jolt yaşam döngüsü + tüm alt sistemleri saran facade (ECS bridge placeholder) |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
 ## Durum
 
-Altı fazın tamamı çalışır durumda ve testleri geçiyor (`ctest`):
+Temel altı faz + genişletme (Faz B) çalışır durumda ve testleri geçiyor (`ctest`):
 
 1. **Temel kurulum** — Jolt entegrasyonu, adapter katmanı, düşen küp testi
 2. **Spatial streaming** — `ChunkStreamSystem<T>`, sparse LZ4 chunk depolama
@@ -28,6 +33,17 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor (`ctest`):
 4. **Balistik + malzeme DB** — mermi düşüşü, penetrasyon, sekme
 5. **Araç fiziği** — çok akslı tekerlekli + paletli (skid-steer) ağır vasıta
 6. **Enkaz kalıcılığı** — aynı streaming altyapısıyla hasarlı araç saklama
+7. **Silah fiziği** — geri tepme impulse'u, motorlu türet mount, deterministik sekme/dağılım
+8. **Yüzerlik** — su hacimleri, Jolt buoyancy impulse entegrasyonu
+9. **Yıkılabilir yapılar** — malzeme kırılganlığına göre kademeli çökme
+10. **Ragdoll** — ölüm anında son poz/hızla aktive edilen fizik iskeleti
+11. **AlazForgeContext** — tüm alt sistemleri saran, gelecekteki AlazEngine ECS entegrasyonu için facade
+
+> Faz B'deki `TurretMount`, `BuoyancySystem` ve ragdoll modülleri, bu geliştirme
+> ortamında Jolt submodule checkout edilmediği için gerçek Jolt header'larına
+> karşı derlenip doğrulanamadı — ilgili dosyalarda üst bilgi yorumlarıyla
+> işaretlendi. Submodule mevcut olduğunda (CI'da) ilk derlemede teyit/düzeltme
+> gerekebilir.
 
 ## Build
 

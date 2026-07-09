@@ -3,7 +3,7 @@
 // TerrainDeformSystem.h / WreckPersistence.h'deki "extern template"
 // bildirimleri). Tüketici çeviri birimleri bu kodu yeniden üretmez.
 //
-// DestructibleChunkData physics_ext.dll'e ait olduğu için onun instantiation'ı
+// DestructibleChunkData destructible.dll'e ait olduğu için onun instantiation'ı
 // burada değil, src/destructible/DestructibleChunkData.cpp içindedir.
 
 #include "streaming/ChunkStreamSystem.h"

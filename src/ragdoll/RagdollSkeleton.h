@@ -13,14 +13,14 @@
 
 #include "ragdoll/RagdollDefinition.h"
 
-#include <physics_ext/export.h>
+#include <ragdoll/export.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Ragdoll/Ragdoll.h>
 
 namespace alazforge {
 
-class PHYSICS_EXT_API RagdollSkeleton {
+class RAGDOLL_API RagdollSkeleton {
 public:
     explicit RagdollSkeleton(const RagdollSkeletonConfig& inConfig);
 

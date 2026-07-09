@@ -4,12 +4,18 @@ project(AlazForge LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# physics/physics_ext SHARED hedefleri, statik olarak derlenen Jolt/lz4 nesne
-# dosyalarını içine alacak; bu yüzden PIC, alt dizinler eklenmeden ÖNCE global
-# olarak açılmalı.
+# Tüm SHARED hedefler statik olarak derlenen lz4 nesne dosyalarını içine
+# alabilir; bu yüzden PIC, alt dizinler eklenmeden ÖNCE global olarak açılmalı.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# ── Jolt Physics (external/JoltPhysics, MIT) ────────────────────────
+# ── Jolt Physics (external/JoltPhysics, MIT) — kendi DLL'i (jolt.dll) ──
+# BUILD_SHARED_LIBS ON iken Jolt'un kendi CMakeLists'i "Jolt" hedefini
+# SHARED olarak kurar (JPH_SHARED_LIBRARY/JPH_EXPORT Jolt tarafında
+# otomatik devreye girer). NOT: bu ortamda submodule checkout edilmediği
+# için Jolt'un SHARED build desteği burada derlenip doğrulanamadı; ilk
+# derlemede teyit edilmeli.
+set(BUILD_SHARED_LIBS ON)
+
 set(TARGET_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(TARGET_HELLO_WORLD OFF CACHE BOOL "" FORCE)
 set(TARGET_PERFORMANCE_TEST OFF CACHE BOOL "" FORCE)
@@ -19,16 +25,17 @@ set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
 # AlazEngine dinamik CRT kullanıyor; Jolt da uyumlu olsun
 set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/JoltPhysics/Build)
+set_target_properties(Jolt PROPERTIES OUTPUT_NAME jolt)
 
-# ── LZ4 (external/lz4, BSD-2) — tek çeviri birimi yeterli ──────────
+# ── LZ4 (external/lz4, BSD-2) — tek çeviri birimi, her zaman statik ────
 add_library(lz4_static STATIC external/lz4/lib/lz4.c)
 target_include_directories(lz4_static PUBLIC external/lz4/lib)
+
+include(GenerateExportHeader)
 
 # ── physics: ana fizik kütüphanesi (physics.dll / libphysics.so) ─────
 # Temel 6 faz: adapter, spatial streaming, terrain deform, balistik,
 # malzeme db, araç fiziği + enkaz kalıcılığı.
-include(GenerateExportHeader)
-
 add_library(physics SHARED
     src/material_db/MaterialDatabase.cpp
     src/streaming/ChunkStreamSystem.cpp
@@ -51,7 +58,7 @@ target_include_directories(physics PUBLIC
 )
 
 # Linux'ta Windows dllexport/dllimport semantiğini taklit eder: hiçbir sembol
-# PHYSICS_API ile işaretlenmeden dışa açılmaz. Eksik export'ları CI'da yakalar.
+# *_API ile işaretlenmeden dışa açılmaz. Eksik export'ları CI'da yakalar.
 set_target_properties(physics PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN ON
@@ -65,37 +72,44 @@ target_link_libraries(physics
     PRIVATE lz4_static
 )
 
-# ── physics_ext: yardımcı/genişletme kütüphanesi (physics_ext.dll) ───
-# Faz B: silah fiziği, yüzerlik, yıkılabilir yapılar, ragdoll, ECS bridge
-# facade'ı. physics.dll'e bağımlı, tersi değil (tek yönlü bağımlılık).
-add_library(physics_ext SHARED
-    src/weapons/TurretMount.cpp
-    src/buoyancy/BuoyancySystem.cpp
+# ── Yardımcı/genişletme DLL'leri (Faz B) — her biri kendi başına, hepsi
+# yalnızca physics'e bağımlı (birbirlerine değil) ───────────────────────
+function(alazforge_add_helper_library name export_macro)
+    add_library(${name} SHARED ${ARGN})
+    generate_export_header(${name}
+        EXPORT_MACRO_NAME ${export_macro}
+        EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/generated_include/${name}/export.h
+    )
+    target_include_directories(${name} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated_include>
+    )
+    set_target_properties(${name} PROPERTIES
+        CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON
+    )
+    target_link_libraries(${name} PUBLIC physics)
+endfunction()
+
+# weapons.dll — geri tepme, sekme/dağılım, türet mount
+alazforge_add_helper_library(weapons WEAPONS_API src/weapons/TurretMount.cpp)
+
+# buoyancy.dll — su hacimleri, yüzerlik
+alazforge_add_helper_library(buoyancy BUOYANCY_API src/buoyancy/BuoyancySystem.cpp)
+
+# destructible.dll — yıkılabilir yapılar
+alazforge_add_helper_library(destructible DESTRUCTIBLE_API
     src/destructible/DestructibleChunkData.cpp
     src/destructible/DestructibleStructureSystem.cpp
+)
+
+# ragdoll.dll — ragdoll iskelet + örnek
+alazforge_add_helper_library(ragdoll RAGDOLL_API
     src/ragdoll/RagdollSkeleton.cpp
     src/ragdoll/RagdollInstance.cpp
-    src/context/AlazForgeContext.cpp
 )
 
-generate_export_header(physics_ext
-    EXPORT_MACRO_NAME PHYSICS_EXT_API
-    EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/generated_include/physics_ext/export.h
-)
-target_include_directories(physics_ext PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated_include>
-)
-
-set_target_properties(physics_ext PROPERTIES
-    CXX_VISIBILITY_PRESET hidden
-    VISIBILITY_INLINES_HIDDEN ON
-)
-
-target_link_libraries(physics_ext
-    # AlazForgeContext gibi public header'lar physics.dll'in tiplerini
-    # (BallisticsSystem&, MaterialDatabase&) dışa veriyor -> PUBLIC.
-    PUBLIC physics
-)
+# context.dll — AlazForgeContext (ECS bridge facade'ı)
+alazforge_add_helper_library(context CONTEXT_API src/context/AlazForgeContext.cpp)
 
 # ── Testler ─────────────────────────────────────────────────────────
 enable_testing()

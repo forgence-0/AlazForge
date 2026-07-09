@@ -6,7 +6,7 @@
 
 #include "core/AlazMath.h"
 
-#include <physics_ext/export.h>
+#include <ragdoll/export.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -18,7 +18,7 @@ namespace alazforge {
 
 class RagdollSkeleton;
 
-class PHYSICS_EXT_API RagdollInstance {
+class RAGDOLL_API RagdollInstance {
 public:
     RagdollInstance() = default;
     ~RagdollInstance();

@@ -7,13 +7,32 @@ edilir, kendi mimarisiyle genişletilir.
 
 ## Kütüphaneler
 
-Derleme çıktısı iki ayrı paylaşımlı kütüphanedir — `physics_ext`, `physics`'e
-bağımlıdır, tersi değil:
+Derleme çıktısı 7 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
+`destructible`/`ragdoll`/`context` yalnızca `physics`'e bağımlıdır, birbirlerine
+değil; `physics` da yalnızca `jolt`'a bağımlıdır:
+
+```
+jolt.dll  <-  physics.dll  <-  weapons.dll
+                            <-  buoyancy.dll
+                            <-  destructible.dll
+                            <-  ragdoll.dll
+                            <-  context.dll
+```
 
 | Kütüphane | Dosya | İçerik |
 |---|---|---|
+| **jolt** | `jolt.dll` / `libjolt.so` | Jolt Physics'in kendisi (submodule, MIT) — ayrı DLL olarak derlenir |
 | **physics** | `physics.dll` / `libphysics.so` | Ana fizik: adapter, spatial streaming, terrain deform, balistik, malzeme db, araç fiziği + enkaz kalıcılığı |
-| **physics_ext** | `physics_ext.dll` / `libphysics_ext.so` | Yardımcı/genişletme: silah fiziği, yüzerlik, yıkılabilir yapılar, ragdoll, ECS bridge facade'ı |
+| **weapons** | `weapons.dll` / `libweapons.so` | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
+| **buoyancy** | `buoyancy.dll` / `libbuoyancy.so` | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
+| **destructible** | `destructible.dll` / `libdestructible.so` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
+| **ragdoll** | `ragdoll.dll` / `libragdoll.so` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
+| **context** | `context.dll` / `libcontext.so` | `AlazForgeContext` — Jolt yaşam döngüsü + `physics` alt sistemlerini saran facade (ECS bridge placeholder) |
+
+> Jolt'un `jolt.dll` olarak SHARED derlenmesi bu geliştirme ortamında
+> (submodule checkout edilmediği için) doğrulanamadı — Jolt'un kendi
+> `JPH_SHARED_LIBRARY`/`JPH_EXPORT` desteğine dayanıyor, ilk derlemede teyit
+> edilmeli.
 
 ## Modüller
 
@@ -25,11 +44,11 @@ bağımlıdır, tersi değil:
 | `src/ballistics` | physics | Raycasting tabanlı mermi/balistik sistemi |
 | `src/material_db` | physics | Malzeme özellikleri: sertlik, penetrasyon, kırılma |
 | `src/vehicle` | physics | Araç fiziği (tekerlekli + paletli) ve enkaz kalıcılığı |
-| `src/weapons` | physics_ext | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
-| `src/buoyancy` | physics_ext | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
-| `src/destructible` | physics_ext | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
-| `src/ragdoll` | physics_ext | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
-| `src/context` | physics_ext | `AlazForgeContext` — Jolt yaşam döngüsü + tüm alt sistemleri saran facade (ECS bridge placeholder) |
+| `src/weapons` | weapons | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
+| `src/buoyancy` | buoyancy | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
+| `src/destructible` | destructible | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
+| `src/ragdoll` | ragdoll | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
+| `src/context` | context | `AlazForgeContext` — Jolt yaşam döngüsü + tüm alt sistemleri saran facade (ECS bridge placeholder) |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
@@ -48,11 +67,12 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 
 ### Faz A — Altyapı
 
-- Proje, header-only `INTERFACE` kütüphanesinden iki gerçek paylaşımlı
-  kütüphaneye dönüştürüldü: **physics** (`PHYSICS_API`, ana fizik) ve
-  **physics_ext** (`PHYSICS_EXT_API`, yardımcı/genişletme — bkz.
-  [Kütüphaneler](#kütüphaneler)); her ikisi de `GenerateExportHeader` ile
-  üretilen makrolarla public sınıflarını dışa açıyor.
+- Proje, header-only `INTERFACE` kütüphanesinden 7 ayrı paylaşımlı kütüphaneye
+  dönüştürüldü — `jolt`, `physics` ve 5 yardımcı DLL (`weapons`, `buoyancy`,
+  `destructible`, `ragdoll`, `context`); bkz. [Kütüphaneler](#kütüphaneler).
+  Her biri kendi `GenerateExportHeader` makrosuyla (`PHYSICS_API`,
+  `WEAPONS_API`, `BUOYANCY_API`, `DESTRUCTIBLE_API`, `RAGDOLL_API`,
+  `CONTEXT_API`) public sınıflarını dışa açıyor.
 - `ChunkStreamSystem` destructor'ındaki exception-safety hatası (disk
   hatasında olası `std::terminate()`) düzeltildi.
 - `.clang-format` / `.clang-tidy` eklendi, tüm kod tabanı reformat edildi.
@@ -103,8 +123,8 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 
 ## Build
 
-AlazForge iki paylaşımlı kütüphane üretir: `physics` (ana fizik) ve
-`physics_ext` (yardımcı/genişletme, `physics`'e bağımlı). Bkz.
+AlazForge 7 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
+`buoyancy`, `destructible`, `ragdoll`, `context`). Bkz.
 [Kütüphaneler](#kütüphaneler).
 
 ```
@@ -114,8 +134,8 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Windows'ta `build/physics.dll` ve `build/physics_ext.dll`; Linux'ta
-`build/libphysics.so` ve `build/libphysics_ext.so` üretilir.
+Windows'ta `build/*.dll`, Linux'ta `build/lib*.so` olarak (her hedef kendi alt
+dizininde) üretilir — örn. `jolt.dll`, `physics.dll`, `weapons.dll`.
 
 CI, her push/PR'da submodule'ları taze checkout edip build+test+format kontrolü
 yapar (bkz. `.github/workflows/ci.yml`). Kod stili `.clang-format` ile,

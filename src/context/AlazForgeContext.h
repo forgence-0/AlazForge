@@ -19,7 +19,7 @@
 #include "core/AlazMath.h"
 #include "material_db/MaterialDatabase.h"
 
-#include <physics_ext/export.h>
+#include <context/export.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -39,7 +39,7 @@ class BPLayerInterfaceImpl;
 class ObjectVsBroadPhaseLayerFilterImpl;
 class ObjectLayerPairFilterImpl;
 
-class PHYSICS_EXT_API AlazForgeContext {
+class CONTEXT_API AlazForgeContext {
 public:
     struct Config {
         uint32_t maxBodies = 4096;

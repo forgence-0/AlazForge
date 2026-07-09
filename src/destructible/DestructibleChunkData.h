@@ -6,7 +6,7 @@
 
 #include "streaming/ChunkStreamSystem.h"
 
-#include <physics_ext/export.h>
+#include <destructible/export.h>
 
 #include <cstring>
 
@@ -66,9 +66,9 @@ private:
     }
 };
 
-// DestructibleChunkData tam tanımlı olduktan sonra: kod physics_ext.dll içine
+// DestructibleChunkData tam tanımlı olduktan sonra: kod destructible.dll içine
 // gömülür (bkz. DestructibleChunkData.cpp), tüketici çeviri birimleri
 // yeniden üretmez.
-extern template class PHYSICS_EXT_API ChunkStreamSystem<DestructibleChunkData>;
+extern template class DESTRUCTIBLE_API ChunkStreamSystem<DestructibleChunkData>;
 
 } // namespace alazforge

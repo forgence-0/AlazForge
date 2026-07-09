@@ -21,7 +21,7 @@
 
 #include "core/JoltAdapter.h"
 
-#include <physics_ext/export.h>
+#include <weapons/export.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Constraints/HingeConstraint.h>
@@ -41,7 +41,7 @@ struct TurretMountConfig {
     float minPitchDeg = -10.0f, maxPitchDeg = 20.0f;
 };
 
-class PHYSICS_EXT_API TurretMount {
+class WEAPONS_API TurretMount {
 public:
     explicit TurretMount(const TurretMountConfig& inConfig);
     ~TurretMount();

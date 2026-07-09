@@ -50,7 +50,10 @@ public:
         JPH::ObjectLayer nonMovingLayer = 0;
     };
 
-    explicit AlazForgeContext(const Config& inConfig = {});
+    // NOT: '{}' yerine 'Config{}' -- sinifa CONTEXT_API (visibility) attribute'u
+    // eklenince GCC 13, ic ice tanimli Config tipini '{}' ile eslerken tip
+    // donusum hatasi veriyordu (bkz. BallisticsSystem.h'deki ayni not).
+    explicit AlazForgeContext(const Config& inConfig = Config{});
     ~AlazForgeContext();
 
     AlazForgeContext(const AlazForgeContext&) = delete;

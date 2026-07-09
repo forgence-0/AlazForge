@@ -27,7 +27,7 @@ struct SpreadConfig {
 
 class SpreadAccumulator {
 public:
-    explicit SpreadAccumulator(const SpreadConfig& inConfig = {}) : config(inConfig) {}
+    explicit SpreadAccumulator(const SpreadConfig& inConfig = SpreadConfig{}) : config(inConfig) {}
 
     // Isıyı ekler (maxHeat'e kenetli).
     void RegisterShot() { heat = std::min(heat + config.heatPerShot, config.maxHeat); }

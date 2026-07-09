@@ -67,8 +67,11 @@ public:
         float ricochetSpeedRetention = 0.55f; // sekmede korunan hız oranı
     };
 
+    // NOT: varsayilan argumanda '{}' yerine 'Config{}' kullanildi -- sinifa
+    // PHYSICS_API (visibility) attribute'u eklenince GCC 13, ic ice tanimli
+    // Config tipini '{}' ile eslerken tip donusum hatasi veriyordu.
     BallisticsSystem(JPH::PhysicsSystem& inPhysics, const MaterialDatabase& inMaterials,
-                     const Config& inConfig = {})
+                     const Config& inConfig = Config{})
         : physics(inPhysics), materials(inMaterials), config(inConfig) {}
 
     // Mermiyi ateşler ve tüm uçuşu simüle eder.

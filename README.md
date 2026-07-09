@@ -19,20 +19,26 @@ jolt.dll  <-  physics.dll  <-  weapons.dll
                             <-  context.dll
 ```
 
-| Kütüphane | Dosya | İçerik |
-|---|---|---|
-| **jolt** | `jolt.dll` / `libjolt.so` | Jolt Physics'in kendisi (submodule, MIT) — ayrı DLL olarak derlenir |
-| **physics** | `physics.dll` / `libphysics.so` | Ana fizik: adapter, spatial streaming, terrain deform, balistik, malzeme db, araç fiziği + enkaz kalıcılığı |
-| **weapons** | `weapons.dll` / `libweapons.so` | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
-| **buoyancy** | `buoyancy.dll` / `libbuoyancy.so` | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
-| **destructible** | `destructible.dll` / `libdestructible.so` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
-| **ragdoll** | `ragdoll.dll` / `libragdoll.so` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
-| **context** | `context.dll` / `libcontext.so` | `AlazForgeContext` — Jolt yaşam döngüsü + `physics` alt sistemlerini saran facade (ECS bridge placeholder) |
+Her hedef `add_library(... SHARED ...)` ile tanımlı; Windows/MSVC'de bu,
+CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomatik
+üretir (ekstra bir CMake ayarı gerekmez) — Linux'ta tek çıktı `.so`'dur:
 
-> Jolt'un `jolt.dll` olarak SHARED derlenmesi bu geliştirme ortamında
-> (submodule checkout edilmediği için) doğrulanamadı — Jolt'un kendi
-> `JPH_SHARED_LIBRARY`/`JPH_EXPORT` desteğine dayanıyor, ilk derlemede teyit
-> edilmeli.
+| Kütüphane | Windows | Linux | İçerik |
+|---|---|---|---|
+| **jolt** | `jolt.dll` + `jolt.lib` | `libjolt.so` | Jolt Physics'in kendisi (submodule, MIT) — ayrı DLL olarak derlenir |
+| **physics** | `physics.dll` + `physics.lib` | `libphysics.so` | Ana fizik: adapter, spatial streaming, terrain deform, balistik, malzeme db, araç fiziği + enkaz kalıcılığı |
+| **weapons** | `weapons.dll` + `weapons.lib` | `libweapons.so` | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
+| **buoyancy** | `buoyancy.dll` + `buoyancy.lib` | `libbuoyancy.so` | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
+| **destructible** | `destructible.dll` + `destructible.lib` | `libdestructible.so` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
+| **ragdoll** | `ragdoll.dll` + `ragdoll.lib` | `libragdoll.so` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
+| **context** | `context.dll` + `context.lib` | `libcontext.so` | `AlazForgeContext` — Jolt yaşam döngüsü + `physics` alt sistemlerini saran facade (ECS bridge placeholder) |
+
+> `.lib` dosyaları Windows'ta consumer'ın (AlazEngine) derleme zamanında DLL'e
+> bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
+> yükleme zamanında asıl `.dll` gerekir. Jolt'un `jolt.dll` olarak SHARED
+> derlenmesi bu geliştirme ortamında (submodule checkout edilmediği için)
+> doğrulanamadı — Jolt'un kendi `JPH_SHARED_LIBRARY`/`JPH_EXPORT` desteğine
+> dayanıyor, ilk derlemede teyit edilmeli.
 
 ## Modüller
 
@@ -134,8 +140,9 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Windows'ta `build/*.dll`, Linux'ta `build/lib*.so` olarak (her hedef kendi alt
-dizininde) üretilir — örn. `jolt.dll`, `physics.dll`, `weapons.dll`.
+Windows'ta her hedef için `build/*.dll` + `build/*.lib` (import kütüphanesi),
+Linux'ta `build/lib*.so` üretilir — bkz. [Kütüphaneler](#kütüphaneler) için
+tam liste.
 
 CI, her push/PR'da submodule'ları taze checkout edip build+test+format kontrolü
 yapar (bkz. `.github/workflows/ci.yml`). Kod stili `.clang-format` ile,

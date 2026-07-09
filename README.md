@@ -31,12 +31,19 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor (`ctest`):
 
 ## Build
 
+AlazForge, `alazforge` adında paylaşımlı bir kütüphane (`libalazforge.so` /
+`AlazForge.dll`) olarak derlenir.
+
 ```
 git clone --recursive <repo-url>
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-build/tests/alazforge_test_falling_cube
+ctest --test-dir build --output-on-failure
 ```
+
+CI, her push/PR'da submodule'ları taze checkout edip build+test+format kontrolü
+yapar (bkz. `.github/workflows/ci.yml`). Kod stili `.clang-format` ile,
+statik analiz `.clang-tidy` ile denetlenir.
 
 ## Credits
 

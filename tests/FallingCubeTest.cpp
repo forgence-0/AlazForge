@@ -4,19 +4,19 @@
 
 #include "core/JoltAdapter.h"
 
-#include <Jolt/Jolt.h>
-#include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Factory.h>
-#include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
+#include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Body/BodyActivationListener.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
-#include <Jolt/Physics/Collision/Shape/BoxShape.h>
-#include <Jolt/Physics/Body/BodyCreationSettings.h>
-#include <Jolt/Physics/Body/BodyActivationListener.h>
+#include <Jolt/RegisterTypes.h>
 
-#include <cstdio>
 #include <cmath>
+#include <cstdio>
 #include <thread>
 
 using namespace JPH;
@@ -24,16 +24,16 @@ using namespace JPH::literals;
 
 // ── Katman tanımları (Jolt HelloWorld düzeni) ───────────────────────
 namespace Layers {
-    static constexpr ObjectLayer NON_MOVING = 0;
-    static constexpr ObjectLayer MOVING = 1;
-    static constexpr ObjectLayer NUM_LAYERS = 2;
-}
+static constexpr ObjectLayer NON_MOVING = 0;
+static constexpr ObjectLayer MOVING = 1;
+static constexpr ObjectLayer NUM_LAYERS = 2;
+} // namespace Layers
 
 namespace BroadPhaseLayers {
-    static constexpr BroadPhaseLayer NON_MOVING(0);
-    static constexpr BroadPhaseLayer MOVING(1);
-    static constexpr uint NUM_LAYERS(2);
-}
+static constexpr BroadPhaseLayer NON_MOVING(0);
+static constexpr BroadPhaseLayer MOVING(1);
+static constexpr uint NUM_LAYERS(2);
+} // namespace BroadPhaseLayers
 
 class BPLayerInterfaceImpl final : public BroadPhaseLayerInterface {
 public:
@@ -52,9 +52,13 @@ public:
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
     const char* GetBroadPhaseLayerName(BroadPhaseLayer inLayer) const override {
         switch ((BroadPhaseLayer::Type)inLayer) {
-        case (BroadPhaseLayer::Type)BroadPhaseLayers::NON_MOVING: return "NON_MOVING";
-        case (BroadPhaseLayer::Type)BroadPhaseLayers::MOVING: return "MOVING";
-        default: JPH_ASSERT(false); return "INVALID";
+            case (BroadPhaseLayer::Type)BroadPhaseLayers::NON_MOVING:
+                return "NON_MOVING";
+            case (BroadPhaseLayer::Type)BroadPhaseLayers::MOVING:
+                return "MOVING";
+            default:
+                JPH_ASSERT(false);
+                return "INVALID";
         }
     }
 #endif
@@ -67,9 +71,13 @@ class ObjectVsBroadPhaseLayerFilterImpl : public ObjectVsBroadPhaseLayerFilter {
 public:
     bool ShouldCollide(ObjectLayer inLayer1, BroadPhaseLayer inLayer2) const override {
         switch (inLayer1) {
-        case Layers::NON_MOVING: return inLayer2 == BroadPhaseLayers::MOVING;
-        case Layers::MOVING: return true;
-        default: JPH_ASSERT(false); return false;
+            case Layers::NON_MOVING:
+                return inLayer2 == BroadPhaseLayers::MOVING;
+            case Layers::MOVING:
+                return true;
+            default:
+                JPH_ASSERT(false);
+                return false;
         }
     }
 };
@@ -78,9 +86,13 @@ class ObjectLayerPairFilterImpl : public ObjectLayerPairFilter {
 public:
     bool ShouldCollide(ObjectLayer inObject1, ObjectLayer inObject2) const override {
         switch (inObject1) {
-        case Layers::NON_MOVING: return inObject2 == Layers::MOVING;
-        case Layers::MOVING: return true;
-        default: JPH_ASSERT(false); return false;
+            case Layers::NON_MOVING:
+                return inObject2 == Layers::MOVING;
+            case Layers::MOVING:
+                return true;
+            default:
+                JPH_ASSERT(false);
+                return false;
         }
     }
 };
@@ -113,8 +125,8 @@ int main() {
     // Zemin: 100x1x100 statik kutu, üst yüzeyi y=0
     BoxShapeSettings floor_shape_settings(Vec3(50.0f, 0.5f, 50.0f));
     ShapeRefC floor_shape = floor_shape_settings.Create().Get();
-    BodyCreationSettings floor_settings(floor_shape, RVec3(0.0_r, -0.5_r, 0.0_r),
-                                        Quat::sIdentity(), EMotionType::Static, Layers::NON_MOVING);
+    BodyCreationSettings floor_settings(floor_shape, RVec3(0.0_r, -0.5_r, 0.0_r), Quat::sIdentity(),
+                                        EMotionType::Static, Layers::NON_MOVING);
     body_interface.CreateAndAddBody(floor_settings, EActivation::DontActivate);
 
     // Küp: 1m kenar, 10m yükseklikten düşer — adapter üzerinden konumlandır
@@ -133,18 +145,20 @@ int main() {
         ++step;
 
         if (step % 30 == 0) {
-            alazforge::Vec3 pos = alazforge::FromJolt(body_interface.GetCenterOfMassPosition(cube_id));
+            alazforge::Vec3 pos =
+                alazforge::FromJolt(body_interface.GetCenterOfMassPosition(cube_id));
             printf("adim %3d: kup y = %.3f\n", step, pos.y);
         }
     }
 
-    alazforge::Vec3 final_pos = alazforge::FromJolt(body_interface.GetCenterOfMassPosition(cube_id));
+    alazforge::Vec3 final_pos =
+        alazforge::FromJolt(body_interface.GetCenterOfMassPosition(cube_id));
     bool asleep = !body_interface.IsActive(cube_id);
     // 1m küpün merkezi zemine oturunca y ~= 0.5 olmalı
     bool resting = std::fabs(final_pos.y - 0.5f) < 0.05f;
 
-    printf("sonuc: %d adimda durdu, son y = %.3f, uykuda = %s\n",
-           step, final_pos.y, asleep ? "evet" : "hayir");
+    printf("sonuc: %d adimda durdu, son y = %.3f, uykuda = %s\n", step, final_pos.y,
+           asleep ? "evet" : "hayir");
 
     body_interface.RemoveBody(cube_id);
     body_interface.DestroyBody(cube_id);

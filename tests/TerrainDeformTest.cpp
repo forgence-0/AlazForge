@@ -11,14 +11,14 @@ using namespace alazforge;
 
 static int g_failCount = 0;
 
-#define CHECK(cond, msg)                                        \
-    do {                                                        \
-        if (cond) {                                             \
-            printf("  OK  : %s\n", msg);                        \
-        } else {                                                \
-            printf("  FAIL: %s (satir %d)\n", msg, __LINE__);   \
-            ++g_failCount;                                      \
-        }                                                       \
+#define CHECK(cond, msg)                                      \
+    do {                                                      \
+        if (cond) {                                           \
+            printf("  OK  : %s\n", msg);                      \
+        } else {                                              \
+            printf("  FAIL: %s (satir %d)\n", msg, __LINE__); \
+            ++g_failCount;                                    \
+        }                                                     \
     } while (0)
 
 int main() {

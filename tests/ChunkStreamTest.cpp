@@ -11,14 +11,14 @@ using namespace alazforge;
 
 static int g_failCount = 0;
 
-#define CHECK(cond, msg)                                        \
-    do {                                                        \
-        if (cond) {                                             \
-            printf("  OK  : %s\n", msg);                        \
-        } else {                                                \
-            printf("  FAIL: %s (satir %d)\n", msg, __LINE__);   \
-            ++g_failCount;                                      \
-        }                                                       \
+#define CHECK(cond, msg)                                      \
+    do {                                                      \
+        if (cond) {                                           \
+            printf("  OK  : %s\n", msg);                      \
+        } else {                                              \
+            printf("  FAIL: %s (satir %d)\n", msg, __LINE__); \
+            ++g_failCount;                                    \
+        }                                                     \
     } while (0)
 
 // Brief'teki örnek: 64m chunk, 25cm grid -> 256x256 hücre
@@ -34,8 +34,7 @@ struct DeformationChunkData {
 
     void Deserialize(const uint8_t* data, size_t size) {
         uint32_t count = 0;
-        if (size < sizeof(count))
-            return;
+        if (size < sizeof(count)) return;
         std::memcpy(&count, data, sizeof(count));
         heightMap.assign(data + sizeof(count), data + sizeof(count) + count);
     }
@@ -58,8 +57,7 @@ int main() {
     for (const auto& c : inRadius)
         if (c == ChunkCoord{8, 8}) centerIncluded = true;
     CHECK(centerIncluded, "merkez chunk yaricap listesinde");
-    CHECK(inRadius.size() >= 9 && inRadius.size() <= 21,
-          "100m yaricap makul chunk sayisi (9-21)");
+    CHECK(inRadius.size() >= 9 && inRadius.size() <= 21, "100m yaricap makul chunk sayisi (9-21)");
 
     // ── ChunkStreamSystem ───────────────────────────────────────────
     printf("[ChunkStreamSystem]\n");
@@ -85,7 +83,8 @@ int main() {
 
         stream.FlushDirtyChunks();
         CHECK(stream.ChunkFileExists(ChunkCoord{8, 8}), "flush sonrasi kirli chunk dosyasi var");
-        CHECK(!stream.ChunkFileExists(ChunkCoord{8, 9}), "dokunulmamis chunk'in dosyasi YOK (sparse)");
+        CHECK(!stream.ChunkFileExists(ChunkCoord{8, 9}),
+              "dokunulmamis chunk'in dosyasi YOK (sparse)");
 
         // Uzaklas: chunk (8,8) yaricap disina cikar, RAM'den atilir
         stream.OnPlayerMove(3000.0f, 3000.0f);
@@ -100,8 +99,8 @@ int main() {
     }
 
     // Sıkıştırma etkinliği: 64KB'lik çoğu sıfır heightmap küçük dosya olmalı
-    uintmax_t fileSize = std::filesystem::file_size(
-        std::filesystem::path(saveDir) / "chunk_8_8.afc");
+    uintmax_t fileSize =
+        std::filesystem::file_size(std::filesystem::path(saveDir) / "chunk_8_8.afc");
     printf("  bilgi: 65548 bayt ham veri -> %llu bayt dosya\n",
            static_cast<unsigned long long>(fileSize));
     CHECK(fileSize < 4096, "LZ4 sikistirma etkili (<4KB)");

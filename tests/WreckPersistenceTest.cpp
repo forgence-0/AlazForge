@@ -11,14 +11,14 @@ using namespace alazforge;
 
 static int g_failCount = 0;
 
-#define CHECK(cond, msg)                                        \
-    do {                                                        \
-        if (cond) {                                             \
-            printf("  OK  : %s\n", msg);                        \
-        } else {                                                \
-            printf("  FAIL: %s (satir %d)\n", msg, __LINE__);   \
-            ++g_failCount;                                      \
-        }                                                       \
+#define CHECK(cond, msg)                                      \
+    do {                                                      \
+        if (cond) {                                           \
+            printf("  OK  : %s\n", msg);                      \
+        } else {                                              \
+            printf("  FAIL: %s (satir %d)\n", msg, __LINE__); \
+            ++g_failCount;                                    \
+        }                                                     \
     } while (0)
 
 static WreckRecord MakeWreck(uint64_t id, float x, float z, float damage) {
@@ -79,7 +79,8 @@ int main() {
         if (w1) {
             CHECK(std::fabs(w1->damage - 0.8f) < 1e-6f, "hasar degeri korundu (0.8)");
             CHECK(std::fabs(w1->position.x - 500.0f) < 1e-4f &&
-                  std::fabs(w1->position.z - 500.0f) < 1e-4f, "pozisyon korundu");
+                      std::fabs(w1->position.z - 500.0f) < 1e-4f,
+                  "pozisyon korundu");
             CHECK(std::fabs(w1->rotation.y - 0.7071f) < 1e-4f, "rotasyon korundu");
             CHECK(w1->vehicleType == 42 && w1->flags == 0x1, "arac tipi + flag korundu");
         }

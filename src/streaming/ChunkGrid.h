@@ -2,8 +2,8 @@
 // Chunk koordinat sistemi: dünya koordinatı <-> chunk koordinatı dönüşümü.
 // Harita [0, mapSize) x [0, mapSize) aralığında, origin (0,0) köşede.
 
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <vector>
 
@@ -19,19 +19,19 @@ struct ChunkCoord {
 struct ChunkCoordHash {
     size_t operator()(const ChunkCoord& c) const {
         // 2D koordinat için basit ama iyi dağılımlı karma
-        return std::hash<uint64_t>{}(
-            (static_cast<uint64_t>(static_cast<uint32_t>(c.x)) << 32) |
-            static_cast<uint64_t>(static_cast<uint32_t>(c.z)));
+        return std::hash<uint64_t>{}((static_cast<uint64_t>(static_cast<uint32_t>(c.x)) << 32) |
+                                     static_cast<uint64_t>(static_cast<uint32_t>(c.z)));
     }
 };
 
 struct ChunkGrid {
-    int mapSize = 0;        // metre (kare harita kenarı)
-    int chunkSize = 0;      // metre (bir chunk kenarı)
+    int mapSize = 0;   // metre (kare harita kenarı)
+    int chunkSize = 0; // metre (bir chunk kenarı)
     int chunksPerSide = 0;
 
     ChunkGrid(int inMapSize, int inChunkSize)
-        : mapSize(inMapSize), chunkSize(inChunkSize),
+        : mapSize(inMapSize),
+          chunkSize(inChunkSize),
           chunksPerSide((inMapSize + inChunkSize - 1) / inChunkSize) {}
 
     bool IsValid(const ChunkCoord& c) const {
@@ -63,8 +63,7 @@ struct ChunkGrid {
         for (int cz = minZ; cz <= maxZ; ++cz) {
             for (int cx = minX; cx <= maxX; ++cx) {
                 ChunkCoord c{cx, cz};
-                if (!IsValid(c))
-                    continue;
+                if (!IsValid(c)) continue;
 
                 // Dairenin chunk dikdörtgenine en yakın noktası
                 float nearestX = worldX;
@@ -76,8 +75,7 @@ struct ChunkGrid {
 
                 float dx = nearestX - worldX;
                 float dz = nearestZ - worldZ;
-                if (dx * dx + dz * dz <= radius * radius)
-                    result.push_back(c);
+                if (dx * dx + dz * dz <= radius * radius) result.push_back(c);
             }
         }
         return result;

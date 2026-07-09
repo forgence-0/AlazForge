@@ -5,22 +5,22 @@
 #include "JoltTestWorld.h"
 #include "vehicle/VehicleSystem.h"
 
-#include <cstdio>
 #include <cmath>
+#include <cstdio>
 
 using namespace alazforge;
 using namespace alazforge_test;
 
 static int g_failCount = 0;
 
-#define CHECK(cond, msg)                                        \
-    do {                                                        \
-        if (cond) {                                             \
-            printf("  OK  : %s\n", msg);                        \
-        } else {                                                \
-            printf("  FAIL: %s (satir %d)\n", msg, __LINE__);   \
-            ++g_failCount;                                      \
-        }                                                       \
+#define CHECK(cond, msg)                                      \
+    do {                                                      \
+        if (cond) {                                           \
+            printf("  OK  : %s\n", msg);                      \
+        } else {                                              \
+            printf("  FAIL: %s (satir %d)\n", msg, __LINE__); \
+            ++g_failCount;                                    \
+        }                                                     \
     } while (0)
 
 // 3 akslı ağır kamyon: ön aks direksiyonlu, arka iki aks sürülen

@@ -11,14 +11,14 @@ using namespace alazforge_test;
 
 static int g_failCount = 0;
 
-#define CHECK(cond, msg)                                        \
-    do {                                                        \
-        if (cond) {                                             \
-            printf("  OK  : %s\n", msg);                        \
-        } else {                                                \
-            printf("  FAIL: %s (satir %d)\n", msg, __LINE__);   \
-            ++g_failCount;                                      \
-        }                                                       \
+#define CHECK(cond, msg)                                      \
+    do {                                                      \
+        if (cond) {                                           \
+            printf("  OK  : %s\n", msg);                      \
+        } else {                                              \
+            printf("  FAIL: %s (satir %d)\n", msg, __LINE__); \
+            ++g_failCount;                                    \
+        }                                                     \
     } while (0)
 
 int main() {
@@ -34,8 +34,8 @@ int main() {
     CHECK(db.Get(steel).rhaEquivalentPerCm > db.Get(wood).rhaEquivalentPerCm,
           "celik penetrasyon direnci ahsaptan yuksek");
 
-    const MaterialId custom = db.Register(
-        {"brick", SurfaceType::Custom, 1800.0f, 30.0f, 0.9f, 0.0f, 0.7f});
+    const MaterialId custom =
+        db.Register({"brick", SurfaceType::Custom, 1800.0f, 30.0f, 0.9f, 0.0f, 0.7f});
     CHECK(db.FindByName("brick") == custom && db.Count() == 7,
           "oyun tarafi yeni malzeme kaydedebiliyor");
 
@@ -65,8 +65,8 @@ int main() {
     // ── Penetrasyon: 10cm ahşap duvar ───────────────────────────────
     printf("[Penetrasyon - ahsap]\n");
     {
-        JPH::BodyID wall = world.AddStaticBox(
-            JPH::RVec3(20.0, 0.0, 0.0), JPH::Vec3(0.05f, 2.0f, 2.0f), wood);
+        JPH::BodyID wall =
+            world.AddStaticBox(JPH::RVec3(20.0, 0.0, 0.0), JPH::Vec3(0.05f, 2.0f, 2.0f), wood);
 
         BulletSimResult r = ballistics.Fire(rifle, Vec3{0, 0, 0}, Vec3{1, 0, 0}, 0.5f);
 
@@ -87,8 +87,8 @@ int main() {
     // ── Saplanma: 5cm çelik duvar ───────────────────────────────────
     printf("[Saplanma - celik]\n");
     {
-        JPH::BodyID wall = world.AddStaticBox(
-            JPH::RVec3(20.0, 0.0, 0.0), JPH::Vec3(0.025f, 2.0f, 2.0f), steel);
+        JPH::BodyID wall =
+            world.AddStaticBox(JPH::RVec3(20.0, 0.0, 0.0), JPH::Vec3(0.025f, 2.0f, 2.0f), steel);
 
         BulletSimResult r = ballistics.Fire(rifle, Vec3{0, 0, 0}, Vec3{1, 0, 0}, 0.5f);
 
@@ -108,8 +108,8 @@ int main() {
     printf("[Sekme - celik]\n");
     {
         // Buyuk celik plaka, ust yuzeyi y=0
-        JPH::BodyID plate = world.AddStaticBox(
-            JPH::RVec3(30.0, -0.5, 0.0), JPH::Vec3(30.0f, 0.5f, 5.0f), steel);
+        JPH::BodyID plate =
+            world.AddStaticBox(JPH::RVec3(30.0, -0.5, 0.0), JPH::Vec3(30.0f, 0.5f, 5.0f), steel);
 
         // ~8 derece siyirma acisiyla atis (celik kritik acisi 17)
         const float angleRad = 8.0f * 0.0174533f;
@@ -123,8 +123,7 @@ int main() {
             CHECK(ev.grazingAngleDeg < 17.0f, "siyirma acisi kritik acinin altinda");
             CHECK(ev.remainingSpeed < ev.impactSpeed, "sekme hiz kaybettirdi");
         }
-        CHECK(r.finalVelocity.y > 0.0f || r.finalPosition.y > 0.0f,
-              "mermi sekip yukari yon aldi");
+        CHECK(r.finalVelocity.y > 0.0f || r.finalPosition.y > 0.0f, "mermi sekip yukari yon aldi");
 
         // Ayni plakaya dik atis sekmemeli
         BulletSimResult r2 = ballistics.Fire(rifle, Vec3{30, 5, 0}, Vec3{0, -1, 0}, 0.5f);

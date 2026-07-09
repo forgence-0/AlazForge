@@ -36,7 +36,21 @@ public:
         std::filesystem::create_directories(savePath);
     }
 
-    ~ChunkStreamSystem() { FlushDirtyChunks(); }
+    // FlushDirtyChunks() disk hatasinda throw edebilir; destructor'dan asla
+    // exception kacmamali (stack unwinding sirasinda std::terminate() riski).
+    ~ChunkStreamSystem() {
+        try {
+            FlushDirtyChunks();
+        } catch (const std::exception& e) {
+            std::fprintf(
+                stderr, "AlazForge: ChunkStreamSystem destructor: FlushDirtyChunks basarisiz: %s\n",
+                e.what());
+        } catch (...) {
+            std::fprintf(stderr,
+                         "AlazForge: ChunkStreamSystem destructor: bilinmeyen bir hata ile "
+                         "basarisiz oldu\n");
+        }
+    }
 
     // Oyuncu hareket ettikçe çağrılır: yarıçapa girenler yüklenir,
     // çıkanlar (kirliyse diske yazılıp) RAM'den atılır.
@@ -48,16 +62,14 @@ public:
         // Yarıçap dışına çıkanları boşalt
         std::vector<ChunkCoord> toUnload;
         for (const auto& [coord, data] : loadedChunks) {
-            if (neededSet.find(coord) == neededSet.end())
-                toUnload.push_back(coord);
+            if (neededSet.find(coord) == neededSet.end()) toUnload.push_back(coord);
         }
         for (const ChunkCoord& c : toUnload)
             UnloadChunk(c);
 
         // Yeni girenleri yükle
         for (const ChunkCoord& c : needed) {
-            if (loadedChunks.find(c) == loadedChunks.end())
-                LoadChunk(c);
+            if (loadedChunks.find(c) == loadedChunks.end()) LoadChunk(c);
         }
     }
 
@@ -78,8 +90,7 @@ public:
     void FlushDirtyChunks() {
         for (const ChunkCoord& c : dirtyChunks) {
             auto it = loadedChunks.find(c);
-            if (it != loadedChunks.end())
-                WriteChunkFile(c, it->second);
+            if (it != loadedChunks.end()) WriteChunkFile(c, it->second);
         }
         dirtyChunks.clear();
     }
@@ -106,15 +117,13 @@ private:
 
     void LoadChunk(const ChunkCoord& coord) {
         ChunkDataType data{};
-        if (ChunkFileExists(coord))
-            ReadChunkFile(coord, data);
+        if (ChunkFileExists(coord)) ReadChunkFile(coord, data);
         loadedChunks.emplace(coord, std::move(data));
     }
 
     void UnloadChunk(const ChunkCoord& coord) {
         auto it = loadedChunks.find(coord);
-        if (it == loadedChunks.end())
-            return;
+        if (it == loadedChunks.end()) return;
         if (dirtyChunks.count(coord)) {
             WriteChunkFile(coord, it->second);
             dirtyChunks.erase(coord);
@@ -128,16 +137,15 @@ private:
 
         const int maxDst = LZ4_compressBound(static_cast<int>(raw.size()));
         std::vector<uint8_t> compressed(static_cast<size_t>(maxDst));
-        const int compressedSize = LZ4_compress_default(
-            reinterpret_cast<const char*>(raw.data()),
-            reinterpret_cast<char*>(compressed.data()),
-            static_cast<int>(raw.size()), maxDst);
-        if (compressedSize <= 0)
-            throw std::runtime_error("AlazForge: LZ4 sikistirma basarisiz");
+        const int compressedSize = LZ4_compress_default(reinterpret_cast<const char*>(raw.data()),
+                                                        reinterpret_cast<char*>(compressed.data()),
+                                                        static_cast<int>(raw.size()), maxDst);
+        if (compressedSize <= 0) throw std::runtime_error("AlazForge: LZ4 sikistirma basarisiz");
 
         FILE* f = std::fopen(ChunkFilePath(coord).c_str(), "wb");
         if (!f)
-            throw std::runtime_error("AlazForge: chunk dosyasi yazilamiyor: " + ChunkFilePath(coord));
+            throw std::runtime_error("AlazForge: chunk dosyasi yazilamiyor: " +
+                                     ChunkFilePath(coord));
 
         const uint32_t magic = kMagic;
         const uint32_t rawSize = static_cast<uint32_t>(raw.size());
@@ -152,8 +160,7 @@ private:
     void ReadChunkFile(const ChunkCoord& coord, ChunkDataType& outData) {
         const std::string path = ChunkFilePath(coord);
         FILE* f = std::fopen(path.c_str(), "rb");
-        if (!f)
-            throw std::runtime_error("AlazForge: chunk dosyasi acilamiyor: " + path);
+        if (!f) throw std::runtime_error("AlazForge: chunk dosyasi acilamiyor: " + path);
 
         uint32_t magic = 0, rawSize = 0, compSize = 0;
         bool headerOk = std::fread(&magic, sizeof(magic), 1, f) == 1 &&
@@ -167,13 +174,11 @@ private:
         std::vector<uint8_t> compressed(compSize);
         const bool bodyOk = std::fread(compressed.data(), 1, compSize, f) == compSize;
         std::fclose(f);
-        if (!bodyOk)
-            throw std::runtime_error("AlazForge: eksik chunk verisi: " + path);
+        if (!bodyOk) throw std::runtime_error("AlazForge: eksik chunk verisi: " + path);
 
         std::vector<uint8_t> raw(rawSize);
         const int decoded = LZ4_decompress_safe(
-            reinterpret_cast<const char*>(compressed.data()),
-            reinterpret_cast<char*>(raw.data()),
+            reinterpret_cast<const char*>(compressed.data()), reinterpret_cast<char*>(raw.data()),
             static_cast<int>(compSize), static_cast<int>(rawSize));
         if (decoded < 0 || static_cast<uint32_t>(decoded) != rawSize)
             throw std::runtime_error("AlazForge: LZ4 acma basarisiz: " + path);

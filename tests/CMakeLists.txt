@@ -1,29 +1,29 @@
 add_executable(alazforge_test_falling_cube FallingCubeTest.cpp)
-target_link_libraries(alazforge_test_falling_cube PRIVATE alazforge_core)
+target_link_libraries(alazforge_test_falling_cube PRIVATE alazforge)
 
 add_test(NAME falling_cube COMMAND alazforge_test_falling_cube)
 
 add_executable(alazforge_test_chunk_stream ChunkStreamTest.cpp)
-target_link_libraries(alazforge_test_chunk_stream PRIVATE alazforge_core)
+target_link_libraries(alazforge_test_chunk_stream PRIVATE alazforge)
 
 add_test(NAME chunk_stream COMMAND alazforge_test_chunk_stream)
 
 add_executable(alazforge_test_terrain_deform TerrainDeformTest.cpp)
-target_link_libraries(alazforge_test_terrain_deform PRIVATE alazforge_core)
+target_link_libraries(alazforge_test_terrain_deform PRIVATE alazforge)
 
 add_test(NAME terrain_deform COMMAND alazforge_test_terrain_deform)
 
 add_executable(alazforge_test_ballistics BallisticsTest.cpp)
-target_link_libraries(alazforge_test_ballistics PRIVATE alazforge_core)
+target_link_libraries(alazforge_test_ballistics PRIVATE alazforge)
 
 add_test(NAME ballistics COMMAND alazforge_test_ballistics)
 
 add_executable(alazforge_test_vehicle VehicleTest.cpp)
-target_link_libraries(alazforge_test_vehicle PRIVATE alazforge_core)
+target_link_libraries(alazforge_test_vehicle PRIVATE alazforge)
 
 add_test(NAME vehicle COMMAND alazforge_test_vehicle)
 
 add_executable(alazforge_test_wreck WreckPersistenceTest.cpp)
-target_link_libraries(alazforge_test_wreck PRIVATE alazforge_core)
+target_link_libraries(alazforge_test_wreck PRIVATE alazforge)
 
 add_test(NAME wreck_persistence COMMAND alazforge_test_wreck)

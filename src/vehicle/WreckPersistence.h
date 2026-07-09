@@ -9,6 +9,8 @@
 #include "core/AlazMath.h"
 #include "streaming/ChunkStreamSystem.h"
 
+#include <alazforge/export.h>
+
 #include <cstring>
 
 namespace alazforge {
@@ -17,7 +19,7 @@ namespace alazforge {
 struct WreckRecord {
     uint64_t id = 0;
     uint32_t vehicleType = 0;
-    Vec3 position;   // dünya pozisyonu
+    Vec3 position; // dünya pozisyonu
     Quat rotation;
     float damage = 0.0f; // 0 = sağlam, 1 = tamamen tahrip
     uint32_t flags = 0;  // bit maskesi (yanıyor/terk edilmiş vb. oyun tanımlı)
@@ -44,15 +46,12 @@ struct WreckChunkData {
     void Deserialize(const uint8_t* data, size_t size) {
         wrecks.clear();
         uint32_t count = 0;
-        if (size < sizeof(count))
-            return;
+        if (size < sizeof(count)) return;
         std::memcpy(&count, data, sizeof(count));
         const uint8_t* p = data + sizeof(count);
-        const size_t recordSize = sizeof(uint64_t) + sizeof(uint32_t) +
-                                  sizeof(Vec3) + sizeof(Quat) + sizeof(float) +
-                                  sizeof(uint32_t);
-        if (size < sizeof(count) + count * recordSize)
-            return; // bozuk/eksik veri: boş chunk döndür
+        const size_t recordSize = sizeof(uint64_t) + sizeof(uint32_t) + sizeof(Vec3) +
+                                  sizeof(Quat) + sizeof(float) + sizeof(uint32_t);
+        if (size < sizeof(count) + count * recordSize) return; // bozuk/eksik veri: boş chunk döndür
         wrecks.resize(count);
         for (uint32_t i = 0; i < count; ++i) {
             WreckRecord& w = wrecks[i];
@@ -76,48 +75,31 @@ private:
     }
 };
 
-class WreckPersistenceSystem {
-public:
-    WreckPersistenceSystem(ChunkGrid inGrid, float loadRadius, const std::string& savePath)
-        : grid(inGrid), stream(inGrid, loadRadius, savePath) {}
+// WreckChunkData tam tanımlı olduktan sonra: kod DLL içine gömülür (bkz.
+// ChunkStreamSystem.cpp), tüketici çeviri birimleri yeniden üretmez.
+extern template class ALAZFORGE_API ChunkStreamSystem<WreckChunkData>;
 
-    void OnPlayerMove(float worldX, float worldZ) { stream.OnPlayerMove(worldX, worldZ); }
-    void Flush() { stream.FlushDirtyChunks(); }
+class ALAZFORGE_API WreckPersistenceSystem {
+public:
+    WreckPersistenceSystem(ChunkGrid inGrid, float loadRadius, const std::string& savePath);
+
+    void OnPlayerMove(float worldX, float worldZ);
+    void Flush();
 
     // Enkazı, pozisyonunun düştüğü chunk'a ekler.
-    void AddWreck(const WreckRecord& wreck) {
-        WreckChunkData& chunk = stream.GetChunkAt(wreck.position.x, wreck.position.z);
-        chunk.wrecks.push_back(wreck);
-        stream.MarkDirty(grid.GetChunkCoord(wreck.position.x, wreck.position.z));
-    }
+    void AddWreck(const WreckRecord& wreck);
 
     // id ile enkazı verilen konumdaki chunk'tan siler. Bulunduysa true.
-    bool RemoveWreck(uint64_t id, float worldX, float worldZ) {
-        WreckChunkData& chunk = stream.GetChunkAt(worldX, worldZ);
-        auto& v = chunk.wrecks;
-        for (size_t i = 0; i < v.size(); ++i) {
-            if (v[i].id == id) {
-                v[i] = v.back();
-                v.pop_back();
-                stream.MarkDirty(grid.GetChunkCoord(worldX, worldZ));
-                return true;
-            }
-        }
-        return false;
-    }
+    bool RemoveWreck(uint64_t id, float worldX, float worldZ);
 
     // Konumdaki chunk'ın tüm enkazları
-    const std::vector<WreckRecord>& GetWrecksAt(float worldX, float worldZ) {
-        return stream.GetChunkAt(worldX, worldZ).wrecks;
-    }
+    const std::vector<WreckRecord>& GetWrecksAt(float worldX, float worldZ);
 
     // Yüklü tüm enkazların bir mevcut kayıt sayısı (test/istatistik)
-    size_t LoadedWreckCount(float worldX, float worldZ) {
-        return stream.GetChunkAt(worldX, worldZ).wrecks.size();
-    }
+    size_t LoadedWreckCount(float worldX, float worldZ);
 
-    ChunkStreamSystem<WreckChunkData>& Stream() { return stream; }
-    const ChunkGrid& Grid() const { return grid; }
+    ChunkStreamSystem<WreckChunkData>& Stream();
+    const ChunkGrid& Grid() const;
 
 private:
     ChunkGrid grid;

@@ -8,6 +8,8 @@
 
 #include "streaming/ChunkStreamSystem.h"
 
+#include <alazforge/export.h>
+
 #include <algorithm>
 #include <cstring>
 
@@ -29,8 +31,7 @@ struct DeformationChunkData {
     void Deserialize(const uint8_t* data, size_t size) {
         cells.clear();
         uint32_t count = 0;
-        if (size < sizeof(count))
-            return;
+        if (size < sizeof(count)) return;
         std::memcpy(&count, data, sizeof(count));
         const uint8_t* p = data + sizeof(count);
         const size_t entrySize = sizeof(uint32_t) + sizeof(float);
@@ -54,71 +55,45 @@ private:
     }
 };
 
-class TerrainDeformSystem {
+// DeformationChunkData tam tanımlı olduktan sonra: bu instantiation'ın kodu
+// src/streaming/ChunkStreamSystem.cpp içinde bir kez derlenip DLL'e gömülür,
+// bu extern bildirim tüketici çeviri birimlerinde yeniden üretilmesini engeller.
+extern template class ALAZFORGE_API ChunkStreamSystem<DeformationChunkData>;
+
+class ALAZFORGE_API TerrainDeformSystem {
 public:
     struct Config {
-        int mapSize = 4096;          // metre
-        int chunkSize = 64;          // metre (varsayılan: 64m chunk)
-        float cellSize = 0.25f;      // metre (varsayılan: 25cm grid)
-        float maxDepth = 1.0f;       // metre, hücre başına çökme sınırı
-        float loadRadius = 200.0f;   // metre, streaming yükleme yarıçapı
+        int mapSize = 4096;        // metre
+        int chunkSize = 64;        // metre (varsayılan: 64m chunk)
+        float cellSize = 0.25f;    // metre (varsayılan: 25cm grid)
+        float maxDepth = 1.0f;     // metre, hücre başına çökme sınırı
+        float loadRadius = 200.0f; // metre, streaming yükleme yarıçapı
         std::string savePath = "terrain_deform";
     };
 
-    explicit TerrainDeformSystem(const Config& inConfig)
-        : config(inConfig),
-          cellsPerSide(static_cast<int>(inConfig.chunkSize / inConfig.cellSize)),
-          grid(inConfig.mapSize, inConfig.chunkSize),
-          stream(grid, inConfig.loadRadius, inConfig.savePath) {}
+    explicit TerrainDeformSystem(const Config& inConfig);
 
-    void OnPlayerMove(float worldX, float worldZ) { stream.OnPlayerMove(worldX, worldZ); }
-    void Flush() { stream.FlushDirtyChunks(); }
+    void OnPlayerMove(float worldX, float worldZ);
+    void Flush();
 
-    int CellsPerSide() const { return cellsPerSide; }
+    int CellsPerSide() const;
 
     // Tek temas noktası: hücreye 'depth' kadar çökme ekler (maxDepth'e kenetli).
-    void ApplyDeformation(float worldX, float worldZ, float depth) {
-        DeformationChunkData& chunk = stream.GetChunkAt(worldX, worldZ);
-        const uint32_t index = CellIndex(worldX, worldZ);
-        float& cell = chunk.cells[index]; // yoksa 0 olarak eklenir, varsa güncellenir
-        cell = std::min(cell + depth, config.maxDepth);
-        stream.MarkDirty(grid.GetChunkCoord(worldX, worldZ));
-    }
+    void ApplyDeformation(float worldX, float worldZ, float depth);
 
     // Dairesel temas (tekerlek/patlama): radius içindeki tüm hücrelere,
     // merkezden uzaklığa göre lineer azalan çökme uygular.
     // Chunk sınırlarını doğru şekilde aşar (her hücre kendi chunk'ına yazılır).
-    void ApplyDeformationRadius(float worldX, float worldZ, float depth, float radius) {
-        const float cs = config.cellSize;
-        const float minX = worldX - radius, maxX = worldX + radius;
-        const float minZ = worldZ - radius, maxZ = worldZ + radius;
-
-        for (float z = SnapToCellCenter(minZ); z <= maxZ; z += cs) {
-            for (float x = SnapToCellCenter(minX); x <= maxX; x += cs) {
-                const float dx = x - worldX, dz = z - worldZ;
-                const float distSq = dx * dx + dz * dz;
-                if (distSq > radius * radius)
-                    continue;
-                const float falloff = 1.0f - std::sqrt(distSq) / radius;
-                ApplyDeformation(x, z, depth * falloff);
-            }
-        }
-    }
+    void ApplyDeformationRadius(float worldX, float worldZ, float depth, float radius);
 
     // Noktadaki çökme derinliği (dokunulmamış hücre = 0)
-    float GetDepthAt(float worldX, float worldZ) {
-        DeformationChunkData& chunk = stream.GetChunkAt(worldX, worldZ);
-        auto it = chunk.cells.find(CellIndex(worldX, worldZ));
-        return it != chunk.cells.end() ? it->second : 0.0f;
-    }
+    float GetDepthAt(float worldX, float worldZ);
 
     // Chunk'taki dolu hücre sayısı (test/istatistik için)
-    size_t TouchedCellCount(float worldX, float worldZ) {
-        return stream.GetChunkAt(worldX, worldZ).cells.size();
-    }
+    size_t TouchedCellCount(float worldX, float worldZ);
 
-    ChunkStreamSystem<DeformationChunkData>& Stream() { return stream; }
-    const ChunkGrid& Grid() const { return grid; }
+    ChunkStreamSystem<DeformationChunkData>& Stream();
+    const ChunkGrid& Grid() const;
 
 private:
     Config config;
@@ -127,22 +102,8 @@ private:
     ChunkStreamSystem<DeformationChunkData> stream;
 
     // Dünya koordinatını chunk içi hücre indeksine çevirir
-    uint32_t CellIndex(float worldX, float worldZ) const {
-        const ChunkCoord c = grid.GetChunkCoord(worldX, worldZ);
-        const float localX = worldX - static_cast<float>(c.x * config.chunkSize);
-        const float localZ = worldZ - static_cast<float>(c.z * config.chunkSize);
-        int cx = static_cast<int>(localX / config.cellSize);
-        int cz = static_cast<int>(localZ / config.cellSize);
-        cx = std::clamp(cx, 0, cellsPerSide - 1);
-        cz = std::clamp(cz, 0, cellsPerSide - 1);
-        return static_cast<uint32_t>(cz) * static_cast<uint32_t>(cellsPerSide) +
-               static_cast<uint32_t>(cx);
-    }
-
-    float SnapToCellCenter(float world) const {
-        const float cs = config.cellSize;
-        return (std::floor(world / cs) + 0.5f) * cs;
-    }
+    uint32_t CellIndex(float worldX, float worldZ) const;
+    float SnapToCellCenter(float world) const;
 };
 
 } // namespace alazforge

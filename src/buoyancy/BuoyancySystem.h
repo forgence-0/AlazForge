@@ -11,7 +11,7 @@
 #include "buoyancy/WaterVolume.h"
 #include "core/JoltAdapter.h"
 
-#include <alazforge/export.h>
+#include <physics_ext/export.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -20,7 +20,7 @@
 
 namespace alazforge {
 
-class ALAZFORGE_API BuoyancySystem {
+class PHYSICS_EXT_API BuoyancySystem {
 public:
     // Hacmi ekler, kararlı bir index döner (RemoveVolume sonrası diğer
     // index'ler geçerliliğini korur).

@@ -6,7 +6,7 @@
 // Jolt entegrasyonu: bir body'nin malzemesi, body user data alanına
 // MaterialId yazılarak belirlenir (BodyInterface::SetUserData).
 
-#include <alazforge/export.h>
+#include <physics/export.h>
 
 #include <cstdint>
 #include <string>
@@ -40,7 +40,7 @@ struct MaterialProperties {
     float brittleness = 0.0f;
 };
 
-class ALAZFORGE_API MaterialDatabase {
+class PHYSICS_API MaterialDatabase {
 public:
     MaterialId Register(const MaterialProperties& props);
     const MaterialProperties& Get(MaterialId id) const;

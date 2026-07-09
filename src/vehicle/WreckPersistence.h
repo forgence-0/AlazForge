@@ -9,7 +9,7 @@
 #include "core/AlazMath.h"
 #include "streaming/ChunkStreamSystem.h"
 
-#include <alazforge/export.h>
+#include <physics/export.h>
 
 #include <cstring>
 
@@ -77,9 +77,9 @@ private:
 
 // WreckChunkData tam tanımlı olduktan sonra: kod DLL içine gömülür (bkz.
 // ChunkStreamSystem.cpp), tüketici çeviri birimleri yeniden üretmez.
-extern template class ALAZFORGE_API ChunkStreamSystem<WreckChunkData>;
+extern template class PHYSICS_API ChunkStreamSystem<WreckChunkData>;
 
-class ALAZFORGE_API WreckPersistenceSystem {
+class PHYSICS_API WreckPersistenceSystem {
 public:
     WreckPersistenceSystem(ChunkGrid inGrid, float loadRadius, const std::string& savePath);
 

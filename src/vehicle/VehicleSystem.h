@@ -18,7 +18,7 @@
 
 #include "core/JoltAdapter.h"
 
-#include <alazforge/export.h>
+#include <physics/export.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -70,7 +70,7 @@ struct VehicleChassisConfig {
 
 enum class VehicleKind : uint8_t { None, Wheeled, Tracked };
 
-class ALAZFORGE_API VehicleSystem {
+class PHYSICS_API VehicleSystem {
 public:
     VehicleSystem() = default;
 

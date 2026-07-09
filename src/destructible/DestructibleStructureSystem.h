@@ -23,7 +23,7 @@
 #include "destructible/DestructibleTypes.h"
 #include "material_db/MaterialDatabase.h"
 
-#include <alazforge/export.h>
+#include <physics_ext/export.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -33,7 +33,7 @@
 
 namespace alazforge {
 
-class ALAZFORGE_API DestructibleStructureSystem {
+class PHYSICS_EXT_API DestructibleStructureSystem {
 public:
     struct Config {
         int mapSize = 4096;

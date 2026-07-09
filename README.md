@@ -5,21 +5,31 @@ edilir, kendi mimarisiyle genişletilir.
 
 **Kapalı kaynak — tüm hakları saklıdır.** Bkz. [COPYING](COPYING).
 
+## Kütüphaneler
+
+Derleme çıktısı iki ayrı paylaşımlı kütüphanedir — `physics_ext`, `physics`'e
+bağımlıdır, tersi değil:
+
+| Kütüphane | Dosya | İçerik |
+|---|---|---|
+| **physics** | `physics.dll` / `libphysics.so` | Ana fizik: adapter, spatial streaming, terrain deform, balistik, malzeme db, araç fiziği + enkaz kalıcılığı |
+| **physics_ext** | `physics_ext.dll` / `libphysics_ext.so` | Yardımcı/genişletme: silah fiziği, yüzerlik, yıkılabilir yapılar, ragdoll, ECS bridge facade'ı |
+
 ## Modüller
 
-| Modül | Açıklama |
-|---|---|
-| `src/core` | Jolt ↔ AlazEngine Vec3/Quat/Transform adapter katmanı |
-| `src/streaming` | Genel `ChunkStreamSystem<T>` — spatial streaming altyapısı (LZ4) |
-| `src/terrain_deform` | Chunk tabanlı terrain deformasyon sistemi |
-| `src/ballistics` | Raycasting tabanlı mermi/balistik sistemi |
-| `src/material_db` | Malzeme özellikleri: sertlik, penetrasyon, kırılma |
-| `src/vehicle` | Araç fiziği (tekerlekli + paletli) ve enkaz kalıcılığı |
-| `src/weapons` | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
-| `src/buoyancy` | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
-| `src/destructible` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
-| `src/ragdoll` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
-| `src/context` | `AlazForgeContext` — Jolt yaşam döngüsü + tüm alt sistemleri saran facade (ECS bridge placeholder) |
+| Modül | Kütüphane | Açıklama |
+|---|---|---|
+| `src/core` | physics | Jolt ↔ AlazEngine Vec3/Quat/Transform adapter katmanı |
+| `src/streaming` | physics | Genel `ChunkStreamSystem<T>` — spatial streaming altyapısı (LZ4) |
+| `src/terrain_deform` | physics | Chunk tabanlı terrain deformasyon sistemi |
+| `src/ballistics` | physics | Raycasting tabanlı mermi/balistik sistemi |
+| `src/material_db` | physics | Malzeme özellikleri: sertlik, penetrasyon, kırılma |
+| `src/vehicle` | physics | Araç fiziği (tekerlekli + paletli) ve enkaz kalıcılığı |
+| `src/weapons` | physics_ext | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
+| `src/buoyancy` | physics_ext | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
+| `src/destructible` | physics_ext | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
+| `src/ragdoll` | physics_ext | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
+| `src/context` | physics_ext | `AlazForgeContext` — Jolt yaşam döngüsü + tüm alt sistemleri saran facade (ECS bridge placeholder) |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
@@ -38,10 +48,11 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 
 ### Faz A — Altyapı
 
-- Proje, header-only `INTERFACE` kütüphanesinden gerçek bir paylaşımlı
-  kütüphaneye (`alazforge` `SHARED` — `libalazforge.so` / `AlazForge.dll`)
-  dönüştürüldü; public sınıflar `ALAZFORGE_API` (`GenerateExportHeader`) ile
-  dışa açılıyor.
+- Proje, header-only `INTERFACE` kütüphanesinden iki gerçek paylaşımlı
+  kütüphaneye dönüştürüldü: **physics** (`PHYSICS_API`, ana fizik) ve
+  **physics_ext** (`PHYSICS_EXT_API`, yardımcı/genişletme — bkz.
+  [Kütüphaneler](#kütüphaneler)); her ikisi de `GenerateExportHeader` ile
+  üretilen makrolarla public sınıflarını dışa açıyor.
 - `ChunkStreamSystem` destructor'ındaki exception-safety hatası (disk
   hatasında olası `std::terminate()`) düzeltildi.
 - `.clang-format` / `.clang-tidy` eklendi, tüm kod tabanı reformat edildi.
@@ -92,8 +103,9 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 
 ## Build
 
-AlazForge, `alazforge` adında paylaşımlı bir kütüphane (`libalazforge.so` /
-`AlazForge.dll`) olarak derlenir.
+AlazForge iki paylaşımlı kütüphane üretir: `physics` (ana fizik) ve
+`physics_ext` (yardımcı/genişletme, `physics`'e bağımlı). Bkz.
+[Kütüphaneler](#kütüphaneler).
 
 ```
 git clone --recursive <repo-url>
@@ -101,6 +113,9 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
+
+Windows'ta `build/physics.dll` ve `build/physics_ext.dll`; Linux'ta
+`build/libphysics.so` ve `build/libphysics_ext.so` üretilir.
 
 CI, her push/PR'da submodule'ları taze checkout edip build+test+format kontrolü
 yapar (bkz. `.github/workflows/ci.yml`). Kod stili `.clang-format` ile,

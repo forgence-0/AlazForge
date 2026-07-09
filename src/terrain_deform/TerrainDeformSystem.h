@@ -8,7 +8,7 @@
 
 #include "streaming/ChunkStreamSystem.h"
 
-#include <alazforge/export.h>
+#include <physics/export.h>
 
 #include <algorithm>
 #include <cstring>
@@ -58,9 +58,9 @@ private:
 // DeformationChunkData tam tanımlı olduktan sonra: bu instantiation'ın kodu
 // src/streaming/ChunkStreamSystem.cpp içinde bir kez derlenip DLL'e gömülür,
 // bu extern bildirim tüketici çeviri birimlerinde yeniden üretilmesini engeller.
-extern template class ALAZFORGE_API ChunkStreamSystem<DeformationChunkData>;
+extern template class PHYSICS_API ChunkStreamSystem<DeformationChunkData>;
 
-class ALAZFORGE_API TerrainDeformSystem {
+class PHYSICS_API TerrainDeformSystem {
 public:
     struct Config {
         int mapSize = 4096;        // metre

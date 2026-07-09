@@ -12,7 +12,7 @@
 #include "core/JoltAdapter.h"
 #include "material_db/MaterialDatabase.h"
 
-#include <alazforge/export.h>
+#include <physics/export.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -57,7 +57,7 @@ struct BulletSimResult {
     bool stopped = false; // saplandı veya hızı tükendi
 };
 
-class ALAZFORGE_API BallisticsSystem {
+class PHYSICS_API BallisticsSystem {
 public:
     struct Config {
         float gravity = 9.81f;

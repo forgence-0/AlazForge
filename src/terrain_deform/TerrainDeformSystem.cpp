@@ -6,7 +6,7 @@ namespace alazforge {
 
 TerrainDeformSystem::TerrainDeformSystem(const Config& inConfig)
     : config(inConfig),
-      cellsPerSide(static_cast<int>(inConfig.chunkSize / inConfig.cellSize)),
+      cellsPerSide(static_cast<int>(static_cast<float>(inConfig.chunkSize) / inConfig.cellSize)),
       grid(inConfig.mapSize, inConfig.chunkSize),
       stream(grid, inConfig.loadRadius, inConfig.savePath) {}
 

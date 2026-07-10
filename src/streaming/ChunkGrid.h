@@ -66,12 +66,16 @@ struct ChunkGrid {
                 if (!IsValid(c)) continue;
 
                 // Dairenin chunk dikdörtgenine en yakın noktası
+                const float cxLow = static_cast<float>(cx) * cs;
+                const float cxHigh = static_cast<float>(cx + 1) * cs;
+                const float czLow = static_cast<float>(cz) * cs;
+                const float czHigh = static_cast<float>(cz + 1) * cs;
                 float nearestX = worldX;
-                if (nearestX < cx * cs) nearestX = cx * cs;
-                if (nearestX > (cx + 1) * cs) nearestX = (cx + 1) * cs;
+                if (nearestX < cxLow) nearestX = cxLow;
+                if (nearestX > cxHigh) nearestX = cxHigh;
                 float nearestZ = worldZ;
-                if (nearestZ < cz * cs) nearestZ = cz * cs;
-                if (nearestZ > (cz + 1) * cs) nearestZ = (cz + 1) * cs;
+                if (nearestZ < czLow) nearestZ = czLow;
+                if (nearestZ > czHigh) nearestZ = czHigh;
 
                 float dx = nearestX - worldX;
                 float dz = nearestZ - worldZ;

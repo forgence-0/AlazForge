@@ -7,9 +7,10 @@ edilir, kendi mimarisiyle genişletilir.
 
 ## Kütüphaneler
 
-Derleme çıktısı 8 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
-`destructible`/`ragdoll`/`context`/`sportsball` yalnızca `physics`'e
-bağımlıdır, birbirlerine değil; `physics` da yalnızca `jolt`'a bağımlıdır:
+Derleme çıktısı 11 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
+`destructible`/`ragdoll`/`context`/`sportsball`/`character`/`rope`/`debugdraw`
+yalnızca `physics`'e bağımlıdır, birbirlerine değil; `physics` da yalnızca
+`jolt`'a bağımlıdır:
 
 ```
 jolt.dll  <-  physics.dll  <-  weapons.dll
@@ -18,6 +19,9 @@ jolt.dll  <-  physics.dll  <-  weapons.dll
                             <-  ragdoll.dll
                             <-  context.dll
                             <-  sportsball.dll
+                            <-  character.dll
+                            <-  rope.dll
+                            <-  debugdraw.dll
 ```
 
 Her hedef `add_library(... SHARED ...)` ile tanımlı; Windows/MSVC'de bu,
@@ -34,12 +38,15 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | **ragdoll** | `ragdoll.dll` + `ragdoll.lib` | `libragdoll.so` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
 | **context** | `context.dll` + `context.lib` | `libcontext.so` | `AlazForgeContext` — Jolt yaşam döngüsü + `physics` alt sistemlerini saran facade (ECS bridge placeholder) |
 | **sportsball** | `sportsball.dll` + `sportsball.lib` | `libsportsball.so` | Topla oynanan sporlar (futbol, basketbol, hentbol, Amerikan futbolu vb.) için genel top fiziği: sürükleme (drag) + Magnus/spin etkisi |
+| **character** | `character.dll` + `character.lib` | `libcharacter.so` | Oyuncu/NPC karakter kontrolcüsü (`JPH::CharacterVirtual` üzerine): yürüme/koşma/zıplama, merdiven, eğim, hareketli platform |
+| **rope** | `rope.dll` + `rope.lib` | `librope.so` | Segment zinciri tabanlı halat/kablo fiziği (vinç, çekme halatı) — uçlar gövdelere sabitlenebilir |
+| **debugdraw** | `debugdraw.dll` + `debugdraw.lib` | `libdebugdraw.so` | Jolt DebugRenderer → AlazEngine çizim callback köprüsü (shape/constraint görselleştirme) |
 
 > `.lib` dosyaları Windows'ta consumer'ın (AlazEngine) derleme zamanında DLL'e
 > bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
 > yükleme zamanında asıl `.dll` gerekir. Tüm kütüphaneler (Jolt'un `jolt.dll`
 > olarak SHARED derlenmesi dahil) gerçek submodule checkout'uyla lokal olarak
-> derlenip 14/14 testle doğrulandı.
+> derlenip 19/19 testle doğrulandı.
 
 ## Modüller
 
@@ -57,6 +64,9 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | `src/ragdoll` | ragdoll | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
 | `src/context` | context | `AlazForgeContext` — Jolt yaşam döngüsü + tüm alt sistemleri saran facade (ECS bridge placeholder) |
 | `src/sportsball` | sportsball | Topla oynanan sporlar için genel top fiziği (sürükleme + Magnus/spin) |
+| `src/character` | character | Karakter kontrolcüsü (`CharacterVirtual`): yürüme/zıplama/merdiven/eğim |
+| `src/rope` | rope | Halat/kablo fiziği (kapsül segment zinciri + top eklemler) |
+| `src/debugdraw` | debugdraw | Debug görselleştirme köprüsü (çizgi/üçgen callback'leri) |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
@@ -112,10 +122,29 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
   `BallConfig` ile oyunu yapan tarafından belirlenir. Amerikan futbolu topu
   gibi küresel olmayan toplar `elongation` alanıyla (prolate spheroid,
   `JPH::ScaledShape` üzerine) desteklenir.
+- **Karakter kontrolcüsü** (`src/character`) — `JPH::CharacterVirtual`
+  üzerine yürüme/koşma/zıplama, merdiven çıkma + zemine yapışma
+  (`ExtendedUpdate`), dik yamaç engeli, hareketli platform desteği.
+- **Patlama sistemi** (`src/weapons/ExplosionSystem`) — yarıçap içindeki
+  gövdelere mesafeyle azalan radyal impulse; etkilenen gövde listesi döner
+  (hasar hesabı çağırana bırakılır — DLL bağımsızlık kuralı korunur).
+- **Halat fiziği** (`src/rope`) — kapsül segment zinciri + top eklemler;
+  uçlar dünyadaki gövdelere sabitlenebilir (vinç/çekme halatı).
+- **Su durumu sorgusu** (`BuoyancySystem::QueryWaterState`) — karakter gibi
+  rigid-body olmayan aktörler için nokta bazlı batıklık + akıntı bilgisi.
+- **Dünya kaydet/yükle** (`AlazForgeContext::Save/RestoreWorldState`) —
+  Jolt `StateRecorder` ile tüm fizik dünyasının binary snapshot'ı; aynı
+  durumdan aynı adımlar bit-birebir aynı sonucu verir (determinizm testi
+  ile doğrulanmış — multiplayer lockstep'in ön koşulu).
+- **Terrain gerçek çarpışması** (`TerrainDeformSystem::UpdateChunkCollision`)
+  — deformasyon verisi `JPH::HeightFieldShape` gövdesine çevrilir; kraterler
+  gerçekten çarpışılabilir (araç çukura düşer).
+- **Debug görselleştirme** (`src/debugdraw`) — Jolt DebugRenderer'ı
+  AlazEngine'in çizim katmanına çizgi/üçgen callback'leriyle aktaran köprü.
 
 ## Test
 
-14 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+19 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -133,6 +162,11 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 | `ragdoll` | İki kemikli ragdoll zincirinin tutarlılığı |
 | `alazforge_context` | Jolt yaşam döngüsü + aktif gövde snapshot'ı |
 | `sportsball` | Top fiziği: Magnus etkisiyle yanal sapma, sürüklemeyle yavaşlama, elips top sanity-check |
+| `character_controller` | Yürüme hızı, dik duvarı geçememe, zıplayıp inme |
+| `explosion` | Patlama falloff sırası, yarıçap dışı, statik gövde davranışı |
+| `rope` | Asılı halatın sarkması, zincir bütünlüğü + su durumu sorgusu |
+| `world_state` | Dünya kaydet/geri yükle + bit-birebir determinizm |
+| `terrain_collision` | Kraterin gerçek çarpışılabilirliği + debug çizim köprüsü |
 
 ## Build
 

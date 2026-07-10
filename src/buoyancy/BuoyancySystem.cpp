@@ -66,6 +66,17 @@ void BuoyancySystem::Update(JPH::PhysicsSystem& physics, float dt) {
     }
 }
 
+BuoyancySystem::WaterState BuoyancySystem::QueryWaterState(const Vec3& worldPos) const {
+    WaterState state;
+    const WaterVolume* volume = FindVolumeContaining(worldPos);
+    if (!volume) return state;
+    state.inWater = true;
+    state.surfaceY = volume->surfaceY;
+    state.submergedDepth = std::max(0.0f, volume->surfaceY - worldPos.y);
+    state.flowVelocity = volume->flowVelocity;
+    return state;
+}
+
 bool BuoyancySystem::IsSubmerged(JPH::PhysicsSystem& physics, JPH::BodyID body) const {
     JPH::BodyLockRead lock(physics.GetBodyLockInterface(), body);
     if (!lock.Succeeded()) return false;

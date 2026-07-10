@@ -36,6 +36,19 @@ public:
 
     bool IsSubmerged(JPH::PhysicsSystem& physics, JPH::BodyID body) const;
 
+    // Bir dünya noktasındaki su durumu — CharacterController gibi rigid
+    // body OLMAYAN aktörlerin (CharacterVirtual dünyada gövde olarak
+    // yaşamaz, TrackBody ile izlenemez) yüzme mekaniği kurabilmesi için:
+    // karakter tarafı her frame sorgular, submergedDepth > 0 ise kendi
+    // hızına kaldırma + akıntıyı uygular.
+    struct WaterState {
+        bool inWater = false;
+        float surfaceY = 0.0f;       // içinde bulunulan hacmin yüzey yüksekliği
+        float submergedDepth = 0.0f; // nokta yüzeyin ne kadar altında (m, >=0)
+        Vec3 flowVelocity{0, 0, 0};  // hacmin akıntı hızı (m/s)
+    };
+    WaterState QueryWaterState(const Vec3& worldPos) const;
+
 private:
     struct StoredVolume {
         WaterVolume volume;

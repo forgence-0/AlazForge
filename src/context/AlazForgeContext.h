@@ -50,10 +50,14 @@ public:
         JPH::ObjectLayer nonMovingLayer = 0;
     };
 
-    // NOT: '{}' yerine 'Config{}' -- sinifa CONTEXT_API (visibility) attribute'u
-    // eklenince GCC 13, ic ice tanimli Config tipini '{}' ile eslerken tip
-    // donusum hatasi veriyordu (bkz. BallisticsSystem.h'deki ayni not).
-    explicit AlazForgeContext(const Config& inConfig = Config{});
+    // NOT: Config, AlazForgeContext'e iç içe (nested) tanımlı; bu yüzden
+    // Config{}'i BURADA varsayılan argüman değeri olarak kullanamayız -- GCC
+    // (ve standart), iç içe tipin varsayılan üye ilklendiricilerinin ancak
+    // SARAN sınıf tamamlandıktan sonra kullanılabilir olduğunu şart koşuyor
+    // (bkz. BallisticsSystem.h'deki aynı not). İki-constructor'a bölüp
+    // varsayılanı .cpp'de çözüyoruz.
+    AlazForgeContext();
+    explicit AlazForgeContext(const Config& inConfig);
     ~AlazForgeContext();
 
     AlazForgeContext(const AlazForgeContext&) = delete;

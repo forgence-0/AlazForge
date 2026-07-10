@@ -10,6 +10,14 @@
 
 namespace alazforge {
 
+BallisticsSystem::BallisticsSystem(JPH::PhysicsSystem& inPhysics,
+                                   const MaterialDatabase& inMaterials)
+    : BallisticsSystem(inPhysics, inMaterials, Config()) {}
+
+BallisticsSystem::BallisticsSystem(JPH::PhysicsSystem& inPhysics,
+                                   const MaterialDatabase& inMaterials, const Config& inConfig)
+    : physics(inPhysics), materials(inMaterials), config(inConfig) {}
+
 BulletSimResult BallisticsSystem::Fire(const BulletParams& bullet, const Vec3& origin,
                                        const Vec3& direction, float maxFlightTime) {
     BulletSimResult result;

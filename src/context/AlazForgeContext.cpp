@@ -64,6 +64,8 @@ private:
     JPH::ObjectLayer nonMovingLayer, movingLayer;
 };
 
+AlazForgeContext::AlazForgeContext() : AlazForgeContext(Config()) {}
+
 AlazForgeContext::AlazForgeContext(const Config& inConfig) : config(inConfig) {
     if (g_joltInitRefCount == 0) {
         JPH::RegisterDefaultAllocator();

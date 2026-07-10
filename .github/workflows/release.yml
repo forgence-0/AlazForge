@@ -1,15 +1,24 @@
 name: Release
 
-# v* tag'i push edildiginde calisir (orn. v0.1.0): projeyi derler, testleri
+# v* tag'i push edildiginde VEYA Actions sekmesinden elle tetiklendiginde
+# (workflow_dispatch, tag adi girilerek) calisir: projeyi derler, testleri
 # kosar ve derlenen kutuphaneleri (.so) kalici bir GitHub Release'e ekler.
 # CI'daki artifact'lerin aksine Release dosyalari 90 gunde silinmez.
 #
-# Yeni surum cikarmak icin:
-#   git tag v0.2.0 && git push origin v0.2.0
+# Yeni surum cikarmak icin iki yol:
+#   1) git tag v0.2.0 && git push origin v0.2.0
+#   2) Actions > Release > Run workflow, tag alanina "v0.2.0" yaz
+#      (tag yoksa gh release create onu main HEAD'inde otomatik olusturur)
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Olusturulacak surum tag'i (orn. v0.1.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write # gh release create icin gerekli
@@ -42,7 +51,10 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          # tag push'unda ref_name tag'in kendisi; elle tetiklemede input'tan
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" release-libs/*.so \
-            --title "AlazForge ${GITHUB_REF_NAME}" \
+          gh release create "$TAG" release-libs/*.so \
+            --title "AlazForge $TAG" \
+            --target "$GITHUB_SHA" \
             --generate-notes

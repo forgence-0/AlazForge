@@ -157,12 +157,19 @@ statik analiz `.clang-tidy` ile denetlenir.
 
 ### Derlenen kütüphaneleri indirme
 
-Her push'ta CI, derlenen `.so` dosyalarını (testler geçmese bile —
-`build-and-test` job'unun "Upload built libraries" adımı) GitHub Actions'ın
-**Actions** sekmesinde ilgili run'ın altında `alazforge-libraries-<commit-sha>`
-adıyla indirilebilir bir `.zip` olarak yayınlar. Varsayılan olarak 90 gün
-sonra silinir. Kalıcı, versiyonlu bir dağıtım için git tag + GitHub Release
-akışı henüz kurulmadı.
+İki yol var:
+
+1. **Her push'ta (geçici)**: CI, derlenen `.so` dosyalarını (testler geçmese
+   bile — `build-and-test` job'unun "Upload built libraries" adımı) GitHub
+   Actions'ın **Actions** sekmesinde ilgili run'ın altında
+   `alazforge-libraries-<commit-sha>` adıyla indirilebilir bir `.zip` olarak
+   yayınlar. Varsayılan olarak 90 gün sonra silinir.
+
+2. **Versiyonlu sürümlerde (kalıcı)**: bir `v*` tag'i push edildiğinde
+   (örn. `git tag v0.2.0 && git push origin v0.2.0`), release workflow'u
+   (`.github/workflows/release.yml`) projeyi derleyip testleri koşar ve tüm
+   `.so` dosyalarını (jolt dahil) **Releases** sekmesinde kalıcı bir GitHub
+   Release olarak yayınlar — bu dosyalar silinmez.
 
 ## Credits
 

@@ -10,14 +10,11 @@
 // göre orantılı bir hedef açısal hız hesaplanır, yapılandırılan
 // yawRateDegPerSec/pitchRateDegPerSec'e kenetlenir.
 //
-// NOT: Jolt submodule bu ortamda checkout edilmediği için HingeConstraint/
-// MotorSettings alan adları gerçek header'lara karşı doğrulanamadı — genel
-// bilinen Jolt API şekli (mMotorSettings, mLimitsMin/Max, SetTargetAngularVelocity)
-// kullanıldı; ilk derlemede bu alanlar teyit edilmeli.
-//
-// NOT: Basitlik için yaw/pitch ara gövdeleri küçük kutu shape kullanır; ana
-// gövdeyle çarpışma filtrelemesi (CollisionGroup/GroupFilterTable) bu ilk
-// sürümde kurulmadı — üretimde eklenmelidir.
+// Yaw/pitch ara gövdeleri ile ana gövde (parentBody) arasında, ve yaw ile
+// pitch arasında JPH::GroupFilterTable ile çarpışma devre dışı bırakılır --
+// aksi halde (gerçek CI'da yakalandı) türet pivotu ana gövdenin shape'ine
+// dokunuyor/gömülüyorsa, motorun çalıştığı eksene bağlı olarak sürekli bir
+// penetrasyon-düzeltme torku motor komutunu tamamen bastırabiliyordu.
 
 #include "core/JoltAdapter.h"
 

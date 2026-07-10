@@ -2,6 +2,8 @@
 
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Collision/CollisionGroup.h>
+#include <Jolt/Physics/Collision/GroupFilterTable.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 
 #include <algorithm>
@@ -47,13 +49,11 @@ void TurretMount::AttachToBody(JPH::PhysicsSystem& inPhysics, JPH::BodyID parent
     const JPH::RVec3 pivotPos = parentPos + parentRot * ToJolt(config.localOffset);
 
     // Yaw ve pitch govde kutularinin yari-boylari (Z ekseni): ikisi de
-    // pivotta merkezlenirse tamamen ic ice girip collision gurultusu
-    // pitch motorunu bastirir (yaw statik govdeye bagli oldugu icin bu
-    // gurultuye ragmen hedefe ulasabiliyordu, pitch ulasamiyordu). Pitch
-    // govdesini bu iki yari-boyun toplami kadar pivottan one kaydirarak
-    // cakismayi gideriyoruz -- pivot ile namlu ucu arasindaki mesafe,
-    // her iki eksen de AYNI pivot noktasindan gectigi icin acidan
-    // bagimsiz sabit kalir (rijit govde donel hareketinin dogal sonucu).
+    // pivotta merkezlenirse tamamen ic ice girer. Pitch govdesini bu iki
+    // yari-boyun toplami kadar pivottan one kaydirarak yaw/pitch cakismasini
+    // gideriyoruz -- pivot ile namlu ucu arasindaki mesafe, her iki eksen de
+    // AYNI pivot noktasindan gectigi icin acidan bagimsiz sabit kalir (rijit
+    // govde donel hareketinin dogal sonucu).
     constexpr float kYawHalfLengthZ = 0.3f;
     constexpr float kPitchHalfLengthZ = 0.6f;
     constexpr float kPitchForwardOffset = kYawHalfLengthZ + kPitchHalfLengthZ;
@@ -65,11 +65,6 @@ void TurretMount::AttachToBody(JPH::PhysicsSystem& inPhysics, JPH::BodyID parent
                                               JPH::EMotionType::Dynamic, layer);
     yawBodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     yawBodySettings.mMassPropertiesOverride.mMass = 200.0f;
-    // Gercek turet mount'lari mekanik olarak dengelenir (yercekimi torku
-    // sifir); burada da yercekimini kapatiyoruz -- aksi halde pitch
-    // govdesinin (asagida) pivot'tan one kaydirilmis kutle merkezi, motor
-    // komutundan bagimsiz olarak govdeyi asagi limite ceker.
-    yawBodySettings.mGravityFactor = 0.0f;
     yawBody = bi.CreateAndAddBody(yawBodySettings, JPH::EActivation::Activate);
 
     JPH::HingeConstraintSettings yawSettings;
@@ -109,7 +104,6 @@ void TurretMount::AttachToBody(JPH::PhysicsSystem& inPhysics, JPH::BodyID parent
                                                 parentRot, JPH::EMotionType::Dynamic, layer);
     pitchBodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     pitchBodySettings.mMassPropertiesOverride.mMass = 50.0f;
-    pitchBodySettings.mGravityFactor = 0.0f;
     pitchBody = bi.CreateAndAddBody(pitchBodySettings, JPH::EActivation::Activate);
 
     JPH::HingeConstraintSettings pitchSettings;
@@ -135,6 +129,28 @@ void TurretMount::AttachToBody(JPH::PhysicsSystem& inPhysics, JPH::BodyID parent
     pitchConstraint = static_cast<JPH::HingeConstraint*>(pitchSettings.Create(*yawPtr2, *pitchPtr));
     pitchConstraint->SetMotorState(JPH::EMotorState::Velocity);
     physics->AddConstraint(pitchConstraint);
+
+    // ── Çarpışma filtrelemesi: parent/yaw/pitch birbirini görmesin ──────
+    // Kök neden (gerçek CI+lokal build ile doğrulandı): pivot, ana gövdenin
+    // (parentBody) shape'ine değiyor/gömülüyorsa (örn. türet aracın tavanına
+    // oturuyorsa), sürekli bir penetrasyon-düzeltme kuvveti oluşuyor. Bu
+    // kuvvetin pitch hinge'i (X ekseni) üzerindeki torku, yaw hinge'ininkinin
+    // (Y ekseni) aksine -- kutunun uzun kenarı (Z) pitch ekseni etrafında
+    // döndükçe parent'in içine/dışına süpürüldüğü için -- motorun limitli
+    // torkunu (3000 Nm) tamamen bastırabiliyor; sonuç, motor komutunun
+    // yönünden bağımsız olarak açının sürekli alt limite kilitlenmesiydi.
+    // Üç gövdeyi ayrı alt gruplara koyup aralarındaki tüm çarpışmaları
+    // devre dışı bırakıyoruz (gerçek bir türet mekanik olarak tek parça
+    // davranır, kendi tabanıyla/parçalarıyla çarpışmamalı).
+    auto groupFilter = new JPH::GroupFilterTable(3);
+    groupFilter->DisableCollision(0, 1);
+    groupFilter->DisableCollision(0, 2);
+    groupFilter->DisableCollision(1, 2);
+    const JPH::CollisionGroup::GroupID groupId =
+        static_cast<JPH::CollisionGroup::GroupID>(parentBody.GetIndexAndSequenceNumber());
+    bi.SetCollisionGroup(parentBody, JPH::CollisionGroup(groupFilter, groupId, 0));
+    bi.SetCollisionGroup(yawBody, JPH::CollisionGroup(groupFilter, groupId, 1));
+    bi.SetCollisionGroup(pitchBody, JPH::CollisionGroup(groupFilter, groupId, 2));
 }
 
 void TurretMount::SetTargetAngles(float targetYawRad, float targetPitchRad) {

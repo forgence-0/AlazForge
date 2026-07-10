@@ -66,10 +66,14 @@ set_target_properties(physics PROPERTIES
 
 target_link_libraries(physics
     # JPH:: tipleri kendi public header'larında (VehicleSystem.h,
-    # BallisticsSystem.h, ...) göründüğü için Jolt PUBLIC olmalı.
-    PUBLIC Jolt
-    # LZ4 hiçbir public header'da görünmüyor, yalnızca dahili kullanım.
-    PRIVATE lz4_static
+    # BallisticsSystem.h, ...) göründüğü için Jolt PUBLIC olmalı. LZ4 de
+    # PUBLIC olmalı: ChunkStreamSystem.h (<lz4.h> include eder) physics'in
+    # public bir header'ı ve destructible gibi ayrı hedefler physics'i
+    # yalnızca PUBLIC link ederek bu header'a transitively erişiyor --
+    # lz4_static PRIVATE kalirsa include yolu o hedeflere yayilmiyor
+    # (yalnizca sistemde libz4-dev kurulu oldugu icin CI'da tesadufen
+    # calisiyordu, bu ortamda gercek eksiklik yakalandi).
+    PUBLIC Jolt lz4_static
 )
 
 # ── Yardımcı/genişletme DLL'leri (Faz B) — her biri kendi başına, hepsi

@@ -77,17 +77,28 @@ jobs:
           export PATH="$PWD/build/Release:$PWD/build/external/JoltPhysics/Build/Release:$PATH"
           ctest --test-dir build -C Release --output-on-failure
 
+      # AlazEngine tarafinda fizik hatasi ayiklamak icin Debug config de
+      # derlenir; .dll + .pdb (debug sembolleri) + .lib tek zip'te sunulur.
+      - name: Build Debug
+        run: cmake --build build --config Debug --parallel
+
       # VS generator ciktilari config alt dizinine koyar: ana hedefler
-      # build/Release/, Jolt build/external/JoltPhysics/Build/Release/.
-      # Hem .dll hem import .lib toplanir (AlazEngine derleme zamaninda
-      # .lib'e, calisma zamaninda .dll'e ihtiyac duyar).
+      # build/<Config>/, Jolt build/external/JoltPhysics/Build/<Config>/.
+      # Release: .dll + import .lib duz dosya olarak; Debug: .dll/.pdb/.lib
+      # tek zip olarak toplanir.
       - name: Collect libraries
         shell: bash
         run: |
-          mkdir -p release-libs
+          mkdir -p release-libs debug-libs
           cp build/Release/*.dll build/Release/*.lib release-libs/
           cp build/external/JoltPhysics/Build/Release/*.dll release-libs/ 2>/dev/null || true
           cp build/external/JoltPhysics/Build/Release/*.lib release-libs/ 2>/dev/null || true
+          cp build/Debug/*.dll build/Debug/*.lib debug-libs/
+          cp build/Debug/*.pdb debug-libs/ 2>/dev/null || true
+          cp build/external/JoltPhysics/Build/Debug/*.dll debug-libs/ 2>/dev/null || true
+          cp build/external/JoltPhysics/Build/Debug/*.lib debug-libs/ 2>/dev/null || true
+          cp build/external/JoltPhysics/Build/Debug/*.pdb debug-libs/ 2>/dev/null || true
+          7z a release-libs/alazforge-windows-debug.zip ./debug-libs/*
           ls -la release-libs/
 
       - uses: actions/upload-artifact@v7

@@ -67,3 +67,7 @@ add_executable(alazforge_test_sportsball BallPhysicsSystemTest.cpp)
 target_link_libraries(alazforge_test_sportsball PRIVATE sportsball)
 
 add_test(NAME sportsball COMMAND alazforge_test_sportsball)
+
+# Bilgilendirici benchmark -- ctest'e kayitli degil, CI ayri adimda kosar
+add_executable(alazforge_bench BenchmarkMain.cpp)
+target_link_libraries(alazforge_bench PRIVATE context)

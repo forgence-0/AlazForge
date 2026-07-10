@@ -115,6 +115,13 @@ alazforge_add_helper_library(ragdoll RAGDOLL_API
 # context.dll — AlazForgeContext (ECS bridge facade'ı)
 alazforge_add_helper_library(context CONTEXT_API src/context/AlazForgeContext.cpp)
 
+# sportsball.dll — topla oynanan sporlar icin genel top fizigi (surukleme +
+# Magnus/spin etkisi); futbol/basketbol/hentbol/amerikan futbolu gibi
+# sporlara ozel hazir preset yok, her top BallConfig ile kurulur.
+alazforge_add_helper_library(sportsball SPORTSBALL_API
+    src/sportsball/BallPhysicsSystem.cpp
+)
+
 # ── Testler ─────────────────────────────────────────────────────────
 enable_testing()
 add_subdirectory(tests)

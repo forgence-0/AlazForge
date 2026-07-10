@@ -46,8 +46,20 @@ void TurretMount::AttachToBody(JPH::PhysicsSystem& inPhysics, JPH::BodyID parent
     const JPH::Quat parentRot = bi.GetRotation(parentBody);
     const JPH::RVec3 pivotPos = parentPos + parentRot * ToJolt(config.localOffset);
 
+    // Yaw ve pitch govde kutularinin yari-boylari (Z ekseni): ikisi de
+    // pivotta merkezlenirse tamamen ic ice girip collision gurultusu
+    // pitch motorunu bastirir (yaw statik govdeye bagli oldugu icin bu
+    // gurultuye ragmen hedefe ulasabiliyordu, pitch ulasamiyordu). Pitch
+    // govdesini bu iki yari-boyun toplami kadar pivottan one kaydirarak
+    // cakismayi gideriyoruz -- pivot ile namlu ucu arasindaki mesafe,
+    // her iki eksen de AYNI pivot noktasindan gectigi icin acidan
+    // bagimsiz sabit kalir (rijit govde donel hareketinin dogal sonucu).
+    constexpr float kYawHalfLengthZ = 0.3f;
+    constexpr float kPitchHalfLengthZ = 0.6f;
+    constexpr float kPitchForwardOffset = kYawHalfLengthZ + kPitchHalfLengthZ;
+
     // ── Yaw platformu (dikey eksen etrafinda döner) ─────────────────
-    JPH::BoxShapeSettings yawShapeSettings(JPH::Vec3(0.3f, 0.15f, 0.3f));
+    JPH::BoxShapeSettings yawShapeSettings(JPH::Vec3(0.3f, 0.15f, kYawHalfLengthZ));
     yawShapeSettings.SetEmbedded();
     JPH::BodyCreationSettings yawBodySettings(yawShapeSettings.Create().Get(), pivotPos, parentRot,
                                               JPH::EMotionType::Dynamic, layer);
@@ -85,9 +97,10 @@ void TurretMount::AttachToBody(JPH::PhysicsSystem& inPhysics, JPH::BodyID parent
     physics->AddConstraint(yawConstraint);
 
     // ── Pitch/namlu gövdesi (yaw platformunun yerel X ekseni etrafında) ──
-    JPH::BoxShapeSettings pitchShapeSettings(JPH::Vec3(0.15f, 0.15f, 0.6f));
+    JPH::BoxShapeSettings pitchShapeSettings(JPH::Vec3(0.15f, 0.15f, kPitchHalfLengthZ));
     pitchShapeSettings.SetEmbedded();
-    JPH::BodyCreationSettings pitchBodySettings(pitchShapeSettings.Create().Get(), pivotPos,
+    const JPH::RVec3 pitchBodyOrigin = pivotPos + parentRot * JPH::Vec3(0, 0, kPitchForwardOffset);
+    JPH::BodyCreationSettings pitchBodySettings(pitchShapeSettings.Create().Get(), pitchBodyOrigin,
                                                 parentRot, JPH::EMotionType::Dynamic, layer);
     pitchBodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     pitchBodySettings.mMassPropertiesOverride.mMass = 50.0f;

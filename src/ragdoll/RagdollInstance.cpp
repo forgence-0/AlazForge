@@ -1,9 +1,12 @@
 #include "ragdoll/RagdollInstance.h"
 
 #include "core/JoltAdapter.h"
+#include "ragdoll/RagdollDefinition.h"
 #include "ragdoll/RagdollSkeleton.h"
 
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Constraints/SwingTwistConstraint.h>
 
 namespace alazforge {
 
@@ -15,38 +18,71 @@ void RagdollInstance::Activate(JPH::PhysicsSystem& inPhysics, const RagdollSkele
     Destroy();
     physics = &inPhysics;
 
-    JPH::RagdollSettings* settings = skeleton.Settings();
-    for (JPH::RagdollSettings::Part& part : settings->mParts)
-        part.mObjectLayer = layer;
-
-    ragdoll = settings->CreateRagdoll(/*inCollisionGroup=*/0, /*inUserData=*/0, physics);
-
-    // Her gövdeyi, iskeletin dinlenme pozundaki (ragdoll orijinine göre)
-    // konum/rotasyonunu worldPose ile dönüştürerek yerleştir — yalnızca kök
-    // değil TÜM gövdeler; aksi halde constraint'ler ilk adımda şiddetli bir
-    // "snap" yaşar (kök dünyaya ışınlanır, diğerleri eski yerinde kalır).
-    JPH::BodyInterface& bi = physics->GetBodyInterface();
+    const RagdollSkeletonConfig& config = skeleton.Config();
     const JPH::Quat worldRot = ToJolt(worldPose.rotation);
-    const int bodyCount = ragdoll->GetBodyCount();
-    for (int i = 0; i < bodyCount; ++i) {
-        const JPH::RagdollSettings::Part& part = settings->mParts[i];
-        const JPH::Vec3 restPos(part.mPosition);
-        const JPH::RVec3 newWorldPos = ToJoltR(worldPose.position) + worldRot * restPos;
-        const JPH::Quat newWorldRot = worldRot * part.mRotation;
-        bi.SetPositionAndRotation(ragdoll->GetBodyID(i), newWorldPos, newWorldRot,
-                                  JPH::EActivation::DontActivate);
-        if (initialBoneVelocities && i < static_cast<int>(initialBoneVelocities->size()))
-            bi.SetLinearVelocity(ragdoll->GetBodyID(i), ToJolt((*initialBoneVelocities)[i]));
+    const JPH::RVec3 worldPos = ToJoltR(worldPose.position);
+
+    JPH::BodyInterface& bi = physics->GetBodyInterface();
+    boneBodies.resize(config.bones.size());
+
+    // ── Her kemik için gerçek bir dinamik gövde (hemen canlı, create+add
+    // birlikte — sıralama belirsizliğini ortadan kaldırır) ──────────────
+    for (size_t i = 0; i < config.bones.size(); ++i) {
+        const RagdollBoneConfig& bone = config.bones[i];
+        const JPH::RVec3 bonePos = worldPos + worldRot * ToJolt(bone.localPosition);
+        const JPH::Quat boneRot = worldRot * ToJolt(bone.localRotation);
+
+        JPH::BodyCreationSettings bodySettings(skeleton.ShapeAt(static_cast<int>(i)), bonePos,
+                                               boneRot, JPH::EMotionType::Dynamic, layer);
+        boneBodies[i] = bi.CreateAndAddBody(bodySettings, JPH::EActivation::Activate);
+
+        if (initialBoneVelocities && i < initialBoneVelocities->size())
+            bi.SetLinearVelocity(boneBodies[i], ToJolt((*initialBoneVelocities)[i]));
     }
 
-    ragdoll->AddToPhysicsSystem(JPH::EActivation::Activate);
+    // ── Ebeveyn-çocuk eklemleri: SwingTwistConstraint, eklem noktası
+    // çocuk kemiğin kendi pozisyonunda (bkz. RagdollDefinition.h) ───────
+    for (size_t i = 0; i < config.bones.size(); ++i) {
+        const RagdollBoneConfig& bone = config.bones[i];
+        if (bone.parentIndex < 0) continue;
+
+        const JPH::RVec3 jointPos = worldPos + worldRot * ToJolt(bone.localPosition);
+
+        JPH::SwingTwistConstraintSettings twistSettings;
+        twistSettings.mSpace = JPH::EConstraintSpace::WorldSpace;
+        twistSettings.mPosition1 = twistSettings.mPosition2 = jointPos;
+        twistSettings.mTwistAxis1 = twistSettings.mTwistAxis2 = worldRot * JPH::Vec3::sAxisY();
+        twistSettings.mPlaneAxis1 = twistSettings.mPlaneAxis2 = worldRot * JPH::Vec3::sAxisX();
+        twistSettings.mTwistMinAngle = JPH::DegreesToRadians(bone.twistMinDeg);
+        twistSettings.mTwistMaxAngle = JPH::DegreesToRadians(bone.twistMaxDeg);
+        twistSettings.mNormalHalfConeAngle = JPH::DegreesToRadians(bone.swingMaxDeg);
+        twistSettings.mPlaneHalfConeAngle = JPH::DegreesToRadians(bone.swingMaxDeg);
+
+        JPH::Body* parentPtr = nullptr;
+        {
+            JPH::BodyLockWrite lock(physics->GetBodyLockInterface(),
+                                    boneBodies[static_cast<size_t>(bone.parentIndex)]);
+            if (lock.Succeeded()) parentPtr = &lock.GetBody();
+        }
+        JPH::Body* childPtr = nullptr;
+        {
+            JPH::BodyLockWrite lock(physics->GetBodyLockInterface(), boneBodies[i]);
+            if (lock.Succeeded()) childPtr = &lock.GetBody();
+        }
+        if (!parentPtr || !childPtr) continue;
+
+        JPH::Ref<JPH::Constraint> constraint = twistSettings.Create(*parentPtr, *childPtr);
+        physics->AddConstraint(constraint);
+        constraints.push_back(constraint);
+    }
 }
 
 Transform RagdollInstance::GetBoneWorldTransform(int boneIndex) const {
-    if (!ragdoll || !physics) return Transform{};
+    if (!physics || boneIndex < 0 || static_cast<size_t>(boneIndex) >= boneBodies.size())
+        return Transform{};
 
-    const JPH::BodyID id = ragdoll->GetBodyID(boneIndex);
-    JPH::BodyLockRead lock(physics->GetBodyLockInterface(), id);
+    JPH::BodyLockRead lock(physics->GetBodyLockInterface(),
+                           boneBodies[static_cast<size_t>(boneIndex)]);
     if (!lock.Succeeded()) return Transform{};
 
     const JPH::Body& body = lock.GetBody();
@@ -56,13 +92,26 @@ Transform RagdollInstance::GetBoneWorldTransform(int boneIndex) const {
     return t;
 }
 
-int RagdollInstance::BoneCount() const { return ragdoll ? ragdoll->GetBodyCount() : 0; }
+int RagdollInstance::BoneCount() const { return static_cast<int>(boneBodies.size()); }
 
 void RagdollInstance::Destroy() {
-    if (ragdoll) {
-        ragdoll->RemoveFromPhysicsSystem();
-        ragdoll = nullptr;
+    if (!physics) {
+        boneBodies.clear();
+        constraints.clear();
+        return;
     }
+    JPH::BodyInterface& bi = physics->GetBodyInterface();
+
+    for (JPH::Ref<JPH::Constraint>& c : constraints)
+        physics->RemoveConstraint(c);
+    constraints.clear();
+
+    for (JPH::BodyID id : boneBodies) {
+        if (id.IsInvalid()) continue;
+        bi.RemoveBody(id);
+        bi.DestroyBody(id);
+    }
+    boneBodies.clear();
     physics = nullptr;
 }
 

@@ -22,6 +22,18 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      # Testler basarisiz olsa bile calisir (if: always()) -- derlenen
+      # kutuphaneleri (.so; Windows'ta ayni adim .dll/.lib uretir) indirip
+      # incelemek/manuel test etmek isteyenler icin. Varsayilan olarak
+      # 90 gun sonra silinir (GitHub Actions artifact retention).
+      - name: Upload built libraries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alazforge-libraries-${{ github.sha }}
+          path: build/*.so
+          if-no-files-found: warn
+
       - name: Upload compile_commands.json
         uses: actions/upload-artifact@v4
         with:

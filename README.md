@@ -148,6 +148,15 @@ CI, her push/PR'da submodule'ları taze checkout edip build+test+format kontrol�
 yapar (bkz. `.github/workflows/ci.yml`). Kod stili `.clang-format` ile,
 statik analiz `.clang-tidy` ile denetlenir.
 
+### Derlenen kütüphaneleri indirme
+
+Her push'ta CI, derlenen `.so` dosyalarını (testler geçmese bile —
+`build-and-test` job'unun "Upload built libraries" adımı) GitHub Actions'ın
+**Actions** sekmesinde ilgili run'ın altında `alazforge-libraries-<commit-sha>`
+adıyla indirilebilir bir `.zip` olarak yayınlar. Varsayılan olarak 90 gün
+sonra silinir. Kalıcı, versiyonlu bir dağıtım için git tag + GitHub Release
+akışı henüz kurulmadı.
+
 ## Credits
 
 - [Jolt Physics](https://github.com/jrouwe/JoltPhysics) — MIT License,

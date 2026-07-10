@@ -67,13 +67,18 @@ int main() {
     CHECK(finalPitchDeg > 10.0f, "pitch limite dogru ilerledi (0'da kalmadi)");
     CHECK(RadToDeg(maxYawSeen) < 100.0f, "yaw hedefi asiri asmadi (buyuk overshoot yok)");
 
-    // Namlu ucu, oryantasyondan bagimsiz olarak pivot'tan |localMuzzleOffset| kadar uzakta olmali
+    // Namlu ucu, oryantasyondan bagimsiz olarak pivot'tan sabit uzaklikta olmali
+    // (yaw+pitch ayni pivot noktasindan gecen iki eksenli bir donel zincir --
+    // rijit govde donusu pivot'tan uzakligi korur). Sabit mesafe: pitch
+    // govdesinin pivot'tan one kaydirma miktari (yaw+pitch kutu yari-boylarinin
+    // toplami, TurretMount.cpp'deki kPitchForwardOffset = 0.9) artı
+    // localMuzzleOffset (1.0) = 1.9.
     const Transform muzzle = turret.GetMuzzleWorldTransform();
     const float dx = muzzle.position.x - 0.0f;
     const float dy = muzzle.position.y - 1.0f;
     const float dz = muzzle.position.z - 0.0f;
     const float distFromPivot = std::sqrt(dx * dx + dy * dy + dz * dz);
-    CHECK(std::fabs(distFromPivot - 1.0f) < 0.15f, "namlu ucu pivottan sabit uzaklikta");
+    CHECK(std::fabs(distFromPivot - 1.9f) < 0.2f, "namlu ucu pivottan sabit uzaklikta");
 
     turret.Destroy();
     world.physics.GetBodyInterface().RemoveBody(chassis);

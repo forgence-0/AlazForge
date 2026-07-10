@@ -83,6 +83,11 @@ target_link_libraries(alazforge_test_rope PRIVATE rope buoyancy)
 
 add_test(NAME rope COMMAND alazforge_test_rope)
 
+add_executable(alazforge_test_realism RealismTest.cpp)
+target_link_libraries(alazforge_test_realism PRIVATE weapons)
+
+add_test(NAME realism COMMAND alazforge_test_realism)
+
 add_executable(alazforge_test_world_state WorldStateTest.cpp)
 target_link_libraries(alazforge_test_world_state PRIVATE context)
 

@@ -8,10 +8,18 @@
 
 #include <physics/export.h>
 
+#include <Jolt/Jolt.h>
+
+#include <Jolt/Physics/Body/BodyID.h>
+
 #include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+namespace JPH {
+class BodyInterface;
+} // namespace JPH
 
 namespace alazforge {
 
@@ -38,6 +46,12 @@ struct MaterialProperties {
     // Kırılma: 0 = sünek (çelik, toprak), 1 = tamamen gevrek (cam).
     // Decal/parçalanma efektlerinin seçiminde kullanılır.
     float brittleness = 0.0f;
+
+    // Temas davranışı (Jolt gövde parametreleriyle bire bir): buz kayar
+    // (düşük friction), kauçuk zıplar (yüksek restitution), beton sürter.
+    // ApplyToBody ile gövdeye uygulanır — tüm sistemlerde tutarlı malzeme.
+    float friction = 0.5f;    // 0 = sürtünmesiz (buz), ~1 = kauçuk/asfalt
+    float restitution = 0.0f; // 0 = hiç sekmez, 1 = tam elastik
 };
 
 class PHYSICS_API MaterialDatabase {
@@ -50,6 +64,11 @@ public:
     // Gerçek dünya değerleriyle temel malzeme seti.
     // RHA eşdeğerleri yaklaşık alan-etki değerleridir (küçük kalibre için).
     static MaterialDatabase CreateDefault();
+
+    // Malzemenin temas davranışını (friction/restitution) gövdeye uygular
+    // ve MaterialId'yi user data'ya yazar (balistik penetrasyonun beklediği
+    // mevcut sözleşme). Gövde kurulduktan sonra bir kez çağrılır.
+    void ApplyToBody(JPH::BodyInterface& bodyInterface, JPH::BodyID body, MaterialId id) const;
 
 private:
     std::vector<MaterialProperties> materials;

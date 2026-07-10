@@ -141,7 +141,13 @@ void TurretMount::SetTargetAngles(float targetYawRad, float targetPitchRad) {
     const float pitchError = targetPitchRad - CurrentPitch();
 
     yawConstraint->SetTargetAngularVelocity(ClampedRate(yawError, yawMaxRate));
-    pitchConstraint->SetTargetAngularVelocity(ClampedRate(pitchError, pitchMaxRate));
+    // NOT: pitch icin JPH::HingeConstraint::GetCurrentAngle()'in isaret yonu,
+    // mHingeAxis1 = +X etrafinda SetTargetAngularVelocity'nin fiziksel donus
+    // yonunun TERSI cikiyor (CI'da olculdu: pozitif hedef hiz -> negatif aci
+    // sonucu). Motor hedefini bu yuzden negatif isaretle veriyoruz; limitler
+    // (mLimitsMin/Max) ve GetCurrentAngle() zaten dogru/tutarli oldugu icin
+    // (limitin -10'unda kenetlendi) yalnizca motor yonunu ters ceviriyoruz.
+    pitchConstraint->SetTargetAngularVelocity(-ClampedRate(pitchError, pitchMaxRate));
 
     JPH::BodyInterface& bi = physics->GetBodyInterface();
     bi.ActivateBody(yawBody);

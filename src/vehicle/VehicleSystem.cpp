@@ -17,10 +17,18 @@ namespace alazforge {
 namespace {
 
 // Tekerlekli tekerleklere özgü alanlar (direksiyon/fren)
+void ScaleFrictionCurve(JPH::LinearCurve& curve, float multiplier) {
+    for (JPH::LinearCurve::Point& p : curve.mPoints)
+        p.mY *= multiplier;
+}
+
 void ConfigureWheelExtra(JPH::WheelSettingsWV* w, const AxleConfig& a) {
     w->mMaxSteerAngle = JPH::DegreesToRadians(a.maxSteerAngleDeg);
     w->mMaxBrakeTorque = a.maxBrakeTorque;
     w->mMaxHandBrakeTorque = a.maxHandBrakeTorque;
+    // Jolt'un varsayilan slip egrilerini olcekle: <1 kaygan, >1 yaris lastigi
+    ScaleFrictionCurve(w->mLongitudinalFriction, a.tireGripLongitudinal);
+    ScaleFrictionCurve(w->mLateralFriction, a.tireGripLateral);
 }
 // Paletli tekerleklerin direksiyonu yok; skid-steer dönüşünün mümkün
 // olması için yanal sürtünme boyunadan düşük tutulur (paletler dönerken

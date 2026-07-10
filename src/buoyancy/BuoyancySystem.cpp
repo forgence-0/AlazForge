@@ -4,6 +4,7 @@
 #include <Jolt/Physics/Body/BodyLock.h>
 
 #include <algorithm>
+#include <cmath>
 
 namespace alazforge {
 
@@ -45,7 +46,29 @@ const WaterVolume* BuoyancySystem::FindVolumeContaining(const Vec3& worldPos) co
     return nullptr;
 }
 
+float BuoyancySystem::SurfaceHeightAt(const WaterVolume& volume, float x, float z) const {
+    if (volume.waveAmplitude <= 0.0f || volume.waveLength <= 1.0e-3f) return volume.surfaceY;
+    // Ilerleyen duzlem dalga: y = A * sin(k * (d . p) - omega * t).
+    // Deterministik (RNG yok) -- lockstep/replay guvenli.
+    constexpr float kTwoPi = 6.28318530717958647692f;
+    const float k = kTwoPi / volume.waveLength;
+    const float omega = k * volume.waveSpeed;
+    // Yon xz duzleminde normalize edilir
+    float dx = volume.waveDirection.x, dz = volume.waveDirection.z;
+    const float len = std::sqrt(dx * dx + dz * dz);
+    if (len > 1.0e-6f) {
+        dx /= len;
+        dz /= len;
+    } else {
+        dx = 1.0f;
+        dz = 0.0f;
+    }
+    return volume.surfaceY +
+           volume.waveAmplitude * std::sin(k * (dx * x + dz * z) - omega * waveTime);
+}
+
 void BuoyancySystem::Update(JPH::PhysicsSystem& physics, float dt) {
+    waveTime += dt;
     JPH::BodyLockInterface const& lockInterface = physics.GetBodyLockInterface();
 
     for (JPH::BodyID id : trackedBodies) {
@@ -58,7 +81,8 @@ void BuoyancySystem::Update(JPH::PhysicsSystem& physics, float dt) {
         const WaterVolume* volume = FindVolumeContaining(pos);
         if (!volume) continue;
 
-        const JPH::RVec3 surfacePos(body.GetPosition().GetX(), volume->surfaceY,
+        const float surfaceHeight = SurfaceHeightAt(*volume, pos.x, pos.z);
+        const JPH::RVec3 surfacePos(body.GetPosition().GetX(), surfaceHeight,
                                     body.GetPosition().GetZ());
         body.ApplyBuoyancyImpulse(surfacePos, JPH::Vec3(0, 1, 0), volume->buoyancyFactor,
                                   volume->linearDrag, volume->angularDrag,
@@ -70,9 +94,10 @@ BuoyancySystem::WaterState BuoyancySystem::QueryWaterState(const Vec3& worldPos)
     WaterState state;
     const WaterVolume* volume = FindVolumeContaining(worldPos);
     if (!volume) return state;
+    const float surfaceHeight = SurfaceHeightAt(*volume, worldPos.x, worldPos.z);
     state.inWater = true;
-    state.surfaceY = volume->surfaceY;
-    state.submergedDepth = std::max(0.0f, volume->surfaceY - worldPos.y);
+    state.surfaceY = surfaceHeight;
+    state.submergedDepth = std::max(0.0f, surfaceHeight - worldPos.y);
     state.flowVelocity = volume->flowVelocity;
     return state;
 }

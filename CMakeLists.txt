@@ -125,6 +125,12 @@ alazforge_add_helper_library(ragdoll RAGDOLL_API
 # context.dll — AlazForgeContext (ECS bridge facade'ı)
 alazforge_add_helper_library(context CONTEXT_API src/context/AlazForgeContext.cpp)
 
+# zones.dll — sürtünme bölgeleri (buz/çamur/yağ zemin koşulları)
+alazforge_add_helper_library(zones ZONES_API src/zones/FrictionZoneSystem.cpp)
+
+# cloth.dll — Jolt SoftBody tabanlı kumaş/bayrak simülasyonu
+alazforge_add_helper_library(cloth CLOTH_API src/cloth/ClothSystem.cpp)
+
 # debugdraw.dll — Jolt DebugRenderer -> AlazEngine çizim callback köprüsü
 alazforge_add_helper_library(debugdraw DEBUGDRAW_API src/debugdraw/DebugDrawBridge.cpp)
 # Jolt varsayılan olarak RTTI'siz derlenir (CPP_RTTI_ENABLED OFF), bu yüzden

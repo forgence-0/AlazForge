@@ -410,6 +410,27 @@ fizik motorunun kendi maliyetidir.
   (birkaç float çarpımı) — asıl maliyet o gövdenin kendisi zaten `physics`
   rijit-gövde satırında ölçülüyor.
 
+### İşlemci önerisi (GPU değil — bu motor tamamen CPU tabanlı)
+
+AlazForge'un hiçbir GPU fizik çözücüsü yok (Jolt burada salt CPU/
+`JobSystemThreadPool` ile çalışır — `AlazForgeContext::Config::numThreads`
+işi otomatik olarak TÜM çekirdeklere dağıtır, tek çekirdek asla tek başına
+yüklenmez); bu yüzden donanım seçiminde ekran kartı değil, işlemcinin
+çekirdek/thread sayısı ve tek-çekirdek hızı belirleyici. Aşağıdaki tablo
+genel donanım bilgisine dayanır (bu repoda yalnızca CI'nin tek CPU'sunda
+gerçek ölçüm var — bkz. [Hepsi birlikte](#hepsi-birlikte--kombine-sahne-tek-gerçek-ölçüm)):
+
+| Seviye | AMD | Intel |
+|---|---|---|
+| **Minimum** | Ryzen 5 3600 (6C/12T) | Core i5-10400 (6C/12T) |
+| **Önerilen** | Ryzen 5 7600 / 5700X3D (6-8C) | Core i5-13400 / i7-12700 (10C+) |
+| **Maksimum (üst düzey)** | Ryzen 7 7800X3D / 9800X3D | Core i7-13700K / 14700K |
+
+Projenin kendi hedef donanımı (`docs/AlazForge_ClaudeCode_Brief.md`) zaten
+**Ryzen 5 8400F (6C/12T)** — yukarıdaki minimum seviyeyle aynı sınıf; RX570
+GPU'su bu fizik motoruna hiç iş bindirmez (CUDA/DirectML fallback'i yok,
+zaten gerekmiyor).
+
 ## Test
 
 26 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):

@@ -11,7 +11,8 @@ namespace {
 
 #ifdef JPH_DEBUG_RENDERER
 DebugColor FromJoltColor(JPH::ColorArg c) {
-    return DebugColor{c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f};
+    return DebugColor{static_cast<float>(c.r) / 255.0f, static_cast<float>(c.g) / 255.0f,
+                      static_cast<float>(c.b) / 255.0f, static_cast<float>(c.a) / 255.0f};
 }
 #endif
 

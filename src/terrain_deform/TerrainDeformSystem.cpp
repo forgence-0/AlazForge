@@ -110,8 +110,8 @@ JPH::BodyID TerrainDeformSystem::UpdateChunkCollision(JPH::PhysicsSystem& physic
                                                 sampleCount);
     shapeSettings.SetEmbedded();
 
-    const JPH::RVec3 chunkOrigin(static_cast<double>(coord.x * config.chunkSize), 0.0,
-                                 static_cast<double>(coord.z * config.chunkSize));
+    const JPH::RVec3 chunkOrigin(static_cast<float>(coord.x * config.chunkSize), 0.0f,
+                                 static_cast<float>(coord.z * config.chunkSize));
     JPH::BodyCreationSettings bodySettings(shapeSettings.Create().Get(), chunkOrigin,
                                            JPH::Quat::sIdentity(), JPH::EMotionType::Static, layer);
     const JPH::BodyID body = bi.CreateAndAddBody(bodySettings, JPH::EActivation::DontActivate);

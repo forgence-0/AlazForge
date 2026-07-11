@@ -8,25 +8,30 @@ edilir, kendi mimarisiyle genişletilir.
 ## Kütüphaneler
 
 Derleme çıktısı 16 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
-`destructible`/`ragdoll`/`context`/`sportsball`/`character`/`rope`/`debugdraw`/
-`zones`/`cloth`/`aero`/`audio`/`lod` yalnızca `physics`'e bağımlıdır, birbirlerine değil; `physics` da yalnızca
-`jolt`'a bağımlıdır:
+`destructible`/`ragdoll`/`sportsball`/`character`/`rope`/`debugdraw`/
+`zones`/`cloth`/`aero`/`audio`/`lod` yalnızca `physics`'e bağımlıdır, birbirlerine
+değil; `physics` da yalnızca `jolt`'a bağımlıdır. **`context` bu kuralın
+bilinçli tek istisnasıdır**: AlazEngine'in tek giriş noktası olması için
+`zones`/`buoyancy`/`lod`/`audio`/`debugdraw`/`destructible`'ı da sarmalar
+(aşağıda [AlazForgeContext](#alazforgecontext--entegrasyon-noktası) bölümüne
+bakın):
 
 ```
 jolt.dll  <-  physics.dll  <-  weapons.dll
-                            <-  buoyancy.dll
-                            <-  destructible.dll
-                            <-  ragdoll.dll
-                            <-  context.dll
-                            <-  sportsball.dll
-                            <-  character.dll
-                            <-  rope.dll
-                            <-  debugdraw.dll
-                            <-  zones.dll
-                            <-  cloth.dll
-                            <-  aero.dll
-                            <-  audio.dll
-                            <-  lod.dll
+                            <-  buoyancy.dll ────────┐
+                            <-  destructible.dll ────┤
+                            <-  ragdoll.dll          │
+                            <-  sportsball.dll       │
+                            <-  character.dll        │
+                            <-  rope.dll             │
+                            <-  debugdraw.dll ───────┤
+                            <-  zones.dll ───────────┤
+                            <-  cloth.dll            │
+                            <-  aero.dll             │
+                            <-  audio.dll ───────────┤
+                            <-  lod.dll ─────────────┤
+                                                      ▼
+                                                context.dll (hepsini sarmalar)
 ```
 
 Her hedef `add_library(... SHARED ...)` ile tanımlı; Windows/MSVC'de bu,
@@ -41,7 +46,7 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | **buoyancy** | `buoyancy.dll` + `buoyancy.lib` | `libbuoyancy.so` | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
 | **destructible** | `destructible.dll` + `destructible.lib` | `libdestructible.so` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
 | **ragdoll** | `ragdoll.dll` + `ragdoll.lib` | `libragdoll.so` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
-| **context** | `context.dll` + `context.lib` | `libcontext.so` | `AlazForgeContext` — Jolt yaşam döngüsü + `physics` alt sistemlerini saran facade (ECS bridge placeholder) |
+| **context** | `context.dll` + `context.lib` | `libcontext.so` | `AlazForgeContext` — AlazEngine entegrasyonu için TEK giriş noktası: Jolt yaşam döngüsü + tüm world-scoped alt sistemleri (rüzgar/bölge/yüzerlik/LOD/ses-olayı/debug-çizim, isteğe bağlı terrain/destructible) tek bir `Step()` arkasında toplar |
 | **sportsball** | `sportsball.dll` + `sportsball.lib` | `libsportsball.so` | Topla oynanan sporlar (futbol, basketbol, hentbol, Amerikan futbolu vb.) için genel top fiziği: sürükleme (drag) + Magnus/spin etkisi |
 | **character** | `character.dll` + `character.lib` | `libcharacter.so` | Oyuncu/NPC karakter kontrolcüsü (`JPH::CharacterVirtual` üzerine): yürüme/koşma/zıplama, merdiven, eğim, hareketli platform |
 | **rope** | `rope.dll` + `rope.lib` | `librope.so` | Segment zinciri tabanlı halat/kablo fiziği (vinç, çekme halatı) — uçlar gövdelere sabitlenebilir |
@@ -56,7 +61,7 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 > bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
 > yükleme zamanında asıl `.dll` gerekir. Tüm kütüphaneler (Jolt'un `jolt.dll`
 > olarak SHARED derlenmesi dahil) gerçek submodule checkout'uyla lokal olarak
-> derlenip 25/25 testle doğrulandı.
+> derlenip 26/26 testle doğrulandı.
 
 ## Modüller
 
@@ -72,7 +77,7 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | `src/buoyancy` | buoyancy | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
 | `src/destructible` | destructible | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
 | `src/ragdoll` | ragdoll | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
-| `src/context` | context | `AlazForgeContext` — Jolt yaşam döngüsü + tüm alt sistemleri saran facade (ECS bridge placeholder) |
+| `src/context` | context | `AlazForgeContext` — AlazEngine entegrasyonu için tek giriş noktası facade'ı |
 | `src/sportsball` | sportsball | Topla oynanan sporlar için genel top fiziği (sürükleme + Magnus/spin) |
 | `src/character` | character | Karakter kontrolcüsü (`CharacterVirtual`): yürüme/zıplama/merdiven/eğim |
 | `src/rope` | rope | Halat/kablo fiziği (kapsül segment zinciri + top eklemler) |
@@ -127,9 +132,9 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 - **Ragdoll** (`src/ragdoll`) — Jolt'un hazır ragdoll sistemini saran,
   ölüm anında son poz/hızla aktive edilen tek seferlik fizik örneği.
 - **AlazForgeContext** (`src/context`) — Jolt yaşam döngüsünü (Factory,
-  job sistemi, `PhysicsSystem::Init`) ve tüm alt sistemleri saran facade;
-  gelecekteki AlazEngine ECS entegrasyonu için bilinçli olarak minimal
-  tutulan bir başlangıç noktası.
+  job sistemi, `PhysicsSystem::Init`) VE tüm world-scoped alt sistemleri
+  saran tek giriş noktası facade'ı; bkz.
+  [AlazForgeContext — entegrasyon noktası](#alazforgecontext--entegrasyon-noktası).
 - **Spor topu fiziği** (`src/sportsball`) — futbol, basketbol, hentbol,
   Amerikan futbolu gibi topla oynanan sporlar için genel top fiziği:
   aerodinamik sürükleme (drag) + Magnus etkisi (spin'e bağlı kaldırma —
@@ -223,9 +228,45 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
   GetTotalLambdaPosition() / dt`) eşiği aşınca eklem fizikten kaldırılır,
   halat gerçekten ikiye ayrılır. `maxTensionN <= 0` ile kopmaz (varsayılan).
 
+## AlazForgeContext — entegrasyon noktası
+
+`AlazForgeContext`, AlazEngine'in bu repoyu kullanmaya başlaması için TEK
+giriş noktasıdır — demo/prototip değil, 26 testle doğrulanmış gerçek bir
+entegrasyon yüzeyi. Amaç: AlazEngine bir `AlazForgeContext` `new` edip her
+frame `Step()` çağırsın; 16 ayrı DLL'i elle birbirine bağlamak zorunda
+kalmasın.
+
+**Context her zaman kurar (disk I/O yok, ekstra yapılandırma gerekmez):**
+Jolt yaşam döngüsü (Factory/job sistemi/`PhysicsSystem::Init`),
+`MaterialDatabase`, `BallisticsSystem`, `WindSystem`, `FrictionZoneSystem`,
+`BuoyancySystem`, `LODSystem`, `CollisionEventSystem` (ses olayları —
+`physics.SetContactListener` OTOMATIK bağlanır, elle `Attach()` çağırmaya
+gerek yok) ve `DebugDrawBridge`. `Step(dt, collisionSteps, lodReferencePoint)`
+tek çağrıda rüzgar zamanını ilerletir, sürtünme bölgelerini + yüzerliği
+fiziği ilerletmeden ÖNCE, LOD'u ilerlettikten SONRA doğru sırada günceller.
+
+**İsteğe bağlı (disk'e dizin yazan, bu yüzden yalnızca istenirse kurulan):**
+`EnableTerrain(cfg)` ve `EnableDestructible(cfg)` — ilk çağrıda örneği
+oluşturur, sonraki çağrılar aynı örneği döner (idempotent); `HasTerrain()`/
+`HasDestructible()` ile sorgulanabilir.
+
+**Context'e BİLİNÇLİ OLARAK dahil edilmeyenler** — varlık başına
+örneklenen sistemler (tek bir "dünya" sahibi olamazlar): `VehicleSystem`,
+`CharacterController`, `RopeSystem`, `RagdollInstance`, `ClothSystem`,
+`AeroSystem`, `TurretMount`, `RecoilImpulse`, `SpreadAccumulator`,
+`ExplosionSystem`, `TrajectoryPredictor`. Bunlar oyun tarafında varlık
+başına `context.Physics()`'ten alınan `JPH::PhysicsSystem&` ile kurulur.
+
+AlazEngine'in gerçek ECS'i bu repodan görünmediği için entity id eşlemesi
+kasıtlı olarak Context'te tutulmuyor — oyun tarafı `BodyID -> entity`
+tablosunu `SnapshotActiveBodies()` üzerinden kendi kurar. AlazEngine'in
+ECS'i erişilebilir olduğunda Context, doğrudan component senkronizasyonu
+yapan ince bir köprüye dönüştürülebilir; o zamana kadar da tek başına
+çalışan gerçek bir entegrasyon noktasıdır.
+
 ## Test
 
-25 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+26 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -242,6 +283,7 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 | `destructible_structure` | Kademeli çökme (brittleness eşiği) |
 | `ragdoll` | İki kemikli ragdoll zincirinin tutarlılığı |
 | `alazforge_context` | Jolt yaşam döngüsü + aktif gövde snapshot'ı |
+| `context_integration` | Context'in rüzgar/bölge/yüzerlik/LOD/ses-olayı/terrain/destructible alt sistemlerini tek `Step()` arkasında birleşik yönettiği |
 | `sportsball` | Top fiziği: Magnus etkisiyle yanal sapma, sürüklemeyle yavaşlama, elips top sanity-check |
 | `character_controller` | Yürüme hızı, dik duvarı geçememe, zıplayıp inme |
 | `explosion` | Patlama falloff sırası, yarıçap dışı, statik gövde davranışı |

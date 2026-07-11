@@ -73,6 +73,14 @@ public:
     JPH::BodyID DetachPieceAsDynamicBody(JPH::PhysicsSystem& physics, uint64_t structureId,
                                          uint16_t pieceIndex);
 
+    // Kolaylık: bir ApplyDamage/ApplyDamageRadius çağrısının ürettiği TÜM
+    // kırılma event'lerini dinamik enkaz gövdelerine çevirir — duvar
+    // parçaları gerçekten düşer/yuvarlanır. Dönen gövde sayısı; oluşturulan
+    // gövdeler outBodies'e eklenir (yaşam döngüsü çağırana aittir).
+    size_t DetachBrokenPieces(JPH::PhysicsSystem& physics,
+                              const std::vector<PieceBrokenEvent>& events,
+                              std::vector<JPH::BodyID>& outBodies);
+
 private:
     struct PieceRuntime {
         Vec3 localCenter;

@@ -7,9 +7,9 @@ edilir, kendi mimarisiyle genişletilir.
 
 ## Kütüphaneler
 
-Derleme çıktısı 11 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
-`destructible`/`ragdoll`/`context`/`sportsball`/`character`/`rope`/`debugdraw`
-yalnızca `physics`'e bağımlıdır, birbirlerine değil; `physics` da yalnızca
+Derleme çıktısı 14 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
+`destructible`/`ragdoll`/`context`/`sportsball`/`character`/`rope`/`debugdraw`/
+`zones`/`cloth`/`aero` yalnızca `physics`'e bağımlıdır, birbirlerine değil; `physics` da yalnızca
 `jolt`'a bağımlıdır:
 
 ```
@@ -22,6 +22,9 @@ jolt.dll  <-  physics.dll  <-  weapons.dll
                             <-  character.dll
                             <-  rope.dll
                             <-  debugdraw.dll
+                            <-  zones.dll
+                            <-  cloth.dll
+                            <-  aero.dll
 ```
 
 Her hedef `add_library(... SHARED ...)` ile tanımlı; Windows/MSVC'de bu,
@@ -41,12 +44,15 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | **character** | `character.dll` + `character.lib` | `libcharacter.so` | Oyuncu/NPC karakter kontrolcüsü (`JPH::CharacterVirtual` üzerine): yürüme/koşma/zıplama, merdiven, eğim, hareketli platform |
 | **rope** | `rope.dll` + `rope.lib` | `librope.so` | Segment zinciri tabanlı halat/kablo fiziği (vinç, çekme halatı) — uçlar gövdelere sabitlenebilir |
 | **debugdraw** | `debugdraw.dll` + `debugdraw.lib` | `libdebugdraw.so` | Jolt DebugRenderer → AlazEngine çizim callback köprüsü (shape/constraint görselleştirme) |
+| **zones** | `zones.dll` + `zones.lib` | `libzones.so` | Sürtünme bölgeleri: buz/çamur/yağ zemin koşulları (gövde friction'ı bölgeye göre değişir) |
+| **cloth** | `cloth.dll` + `cloth.lib` | `libcloth.so` | Jolt SoftBody kumaş/bayrak simülasyonu (rüzgarda dalgalanır) |
+| **aero** | `aero.dll` + `aero.lib` | `libaero.so` | Paraşüt + planör/wingsuit aerodinamiği (taşıma + sürükleme) |
 
 > `.lib` dosyaları Windows'ta consumer'ın (AlazEngine) derleme zamanında DLL'e
 > bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
 > yükleme zamanında asıl `.dll` gerekir. Tüm kütüphaneler (Jolt'un `jolt.dll`
 > olarak SHARED derlenmesi dahil) gerçek submodule checkout'uyla lokal olarak
-> derlenip 19/19 testle doğrulandı.
+> derlenip 22/22 testle doğrulandı.
 
 ## Modüller
 
@@ -67,6 +73,10 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | `src/character` | character | Karakter kontrolcüsü (`CharacterVirtual`): yürüme/zıplama/merdiven/eğim |
 | `src/rope` | rope | Halat/kablo fiziği (kapsül segment zinciri + top eklemler) |
 | `src/debugdraw` | debugdraw | Debug görselleştirme köprüsü (çizgi/üçgen callback'leri) |
+| `src/wind` | physics | Küresel rüzgar sistemi (deterministik türbülans — balistik/top/halat/kumaş besler) |
+| `src/zones` | zones | Sürtünme bölgeleri (buz/çamur — girince friction değişir, çıkınca döner) |
+| `src/cloth` | cloth | Kumaş/bayrak (Jolt SoftBody grid + rüzgar sürüklemesi) |
+| `src/aero` | aero | Paraşüt/planör aerodinamiği |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
@@ -142,9 +152,40 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 - **Debug görselleştirme** (`src/debugdraw`) — Jolt DebugRenderer'ı
   AlazEngine'in çizim katmanına çizgi/üçgen callback'leriyle aktaran köprü.
 
+### Gerçekçilik katmanı
+
+- **Rüzgar sistemi** (`src/wind`) — yön+şiddet+deterministik türbülans (RNG'siz
+  sinüs toplamı); balistik, spor topu, halat, kumaş ve paraşüt aynı rüzgardan
+  beslenir. Balistikte sürükleme havaya-bağıl hıza uygulanır: yan rüzgar
+  mermiyi ölçülebilir şekilde sürükler.
+- **Malzeme sürtünme hattı** — `MaterialProperties`'e friction/restitution;
+  `ApplyToBody` ile buz kayar, kauçuk zıplar. Varsayılan sete `ice` ve
+  `rubber` eklendi.
+- **Patlama siperi** — merkezden hedefe görüş hattı raycast'i: duvar arkası
+  korunur; falloff varsayılan olarak ters-kare benzeri.
+- **Dalgalı su** — `WaterVolume` dalga parametreleri + `SurfaceHeightAt`;
+  yüzen cisimler ve yüzen karakter dalgayla iner-kalkar.
+- **Sürtünme bölgeleri** (`src/zones`) — buz/çamur bölgeleri; Jolt'un
+  tekerlek CombineFriction'ı zemin friction'ını çarptığından araçları da
+  etkiler.
+- **Kumaş** (`src/cloth`) — SoftBody bayrak, rüzgarda dalgalanır.
+- **Lastik tutunması** — `AxleConfig.tireGripLongitudinal/Lateral` slip
+  eğrisi çarpanları (ıslak/karlı zemin, drift).
+- **Çömelme + yüzme** — `CharacterController::SetCrouch` (alçak tavan
+  altında kalkamaz), `SetWaterState` ile yüzme modu (yüzeye kaldırma +
+  akıntı sürüklenmesi).
+- **Fırlatma yörüngesi** (`src/weapons/TrajectoryPredictor`) — el bombası
+  nişan çizgisi: deterministik yörünge + ilk çarpma noktası (Explosion'a
+  doğrudan verilebilir).
+- **Enkaz** — `DetachBrokenPieces`: kırılan destructible parçaları tek
+  çağrıyla gerçek dinamik gövdelere dönüşür.
+- **Paraşüt/planör** (`src/aero`) — kuadratik sürükleme (bağlantı noktası
+  üstte: kendini dikleştirir) + basitleştirilmiş kanat taşıması; rüzgarla
+  birleşir.
+
 ## Test
 
-19 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+22 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -167,6 +208,9 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 | `rope` | Asılı halatın sarkması, zincir bütünlüğü + su durumu sorgusu |
 | `world_state` | Dünya kaydet/geri yükle + bit-birebir determinizm |
 | `terrain_collision` | Kraterin gerçek çarpışılabilirliği + debug çizim köprüsü |
+| `realism` | Rüzgar determinizmi, balistik rüzgar sürüklenmesi, patlama siperi, malzeme sürtünmesi |
+| `realism2` | Dalgalı su yüzeyi, sürtünme bölgeleri, kumaş+rüzgar, lastik tutunması |
+| `realism3` | Çömelme/alçak tavan, yüzme+akıntı, fırlatma yörüngesi, enkaz, paraşüt/planör |
 
 ## Build
 

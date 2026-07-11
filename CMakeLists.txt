@@ -99,6 +99,7 @@ endfunction()
 alazforge_add_helper_library(weapons WEAPONS_API
     src/weapons/TurretMount.cpp
     src/weapons/ExplosionSystem.cpp
+    src/weapons/TrajectoryPredictor.cpp
 )
 
 # character.dll — CharacterVirtual tabanlı oyuncu/NPC kontrolcüsü
@@ -124,6 +125,9 @@ alazforge_add_helper_library(ragdoll RAGDOLL_API
 
 # context.dll — AlazForgeContext (ECS bridge facade'ı)
 alazforge_add_helper_library(context CONTEXT_API src/context/AlazForgeContext.cpp)
+
+# aero.dll — paraşüt/planör aerodinamiği (taşıma + sürükleme)
+alazforge_add_helper_library(aero AERO_API src/aero/AeroSystem.cpp)
 
 # zones.dll — sürtünme bölgeleri (buz/çamur/yağ zemin koşulları)
 alazforge_add_helper_library(zones ZONES_API src/zones/FrictionZoneSystem.cpp)

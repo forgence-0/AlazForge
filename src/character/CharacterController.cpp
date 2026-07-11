@@ -22,18 +22,9 @@ void CharacterController::Spawn(JPH::PhysicsSystem& inPhysics, const Vec3& world
     // kontrolcuye ozel bir allocator yeterli.
     tempAllocator = std::make_unique<JPH::TempAllocatorImpl>(1024 * 1024);
 
-    // Kapsul, karakterin AYAK noktasi orijinde olacak sekilde yukari
-    // kaydirilir (Jolt'un kendi karakter ornekleriyle ayni kurulum) --
-    // boylece GetWorldTransform().position dogrudan ayak/zemin noktasidir.
-    const float cylinderHalfHeight = std::max(0.05f, 0.5f * config.height - config.radius);
-    JPH::RotatedTranslatedShapeSettings shapeSettings(
-        JPH::Vec3(0, cylinderHalfHeight + config.radius, 0), JPH::Quat::sIdentity(),
-        new JPH::CapsuleShape(cylinderHalfHeight, config.radius));
-    shapeSettings.SetEmbedded();
-
     JPH::CharacterVirtualSettings settings;
     settings.SetEmbedded();
-    settings.mShape = shapeSettings.Create().Get();
+    settings.mShape = MakeCapsule(config.height);
     settings.mMass = config.mass;
     settings.mMaxSlopeAngle = JPH::DegreesToRadians(config.maxSlopeDeg);
     // Ayak kuresinin merkezinin altindaki temaslar "destekleyici" sayilir --
@@ -62,12 +53,38 @@ void CharacterController::Jump() {
 void CharacterController::Update(float dt) {
     if (!character || !physics) return;
 
-    const float speed = runInput ? config.runSpeed : config.walkSpeed;
+    const float speed =
+        crouching ? config.crouchSpeed : (runInput ? config.runSpeed : config.walkSpeed);
     JPH::Vec3 desiredHorizontal(moveInput.x * speed, 0, moveInput.z * speed);
     // Dik yamaclara dogru itmeyi kes (yamacta zıplayarak tirmanmayi onler)
     desiredHorizontal = character->CancelVelocityTowardsSteepSlopes(desiredHorizontal);
 
     const JPH::Vec3 gravity(0, config.gravity, 0);
+
+    // Yuzme modu: ayak, su yuzeyinin swimSubmergeDepth kadar altindaysa
+    const float feetY = static_cast<float>(character->GetPosition().GetY());
+    swimming = waterValid && (waterSurfaceY - feetY) > config.swimSubmergeDepth;
+    if (swimming) {
+        // Yercekimi yok: yuzme girdisi + yuzeye kaldirma + akinti
+        JPH::Vec3 swimVel(moveInput.x * config.swimSpeed, 0, moveInput.z * config.swimSpeed);
+        const float depthBelowSurface = waterSurfaceY - feetY;
+        // Yuzeye yakinken kaldirma azalir (yuzeyde asagi-yukari titremesin)
+        const float rise =
+            config.swimRiseSpeed * std::min(1.0f, depthBelowSurface / config.swimSubmergeDepth);
+        swimVel += JPH::Vec3(waterFlow.x, rise + waterFlow.y, waterFlow.z);
+        jumpRequested = false;
+        character->SetLinearVelocity(swimVel);
+
+        JPH::CharacterVirtual::ExtendedUpdateSettings swimSettings;
+        swimSettings.mWalkStairsStepUp = JPH::Vec3::sZero();     // suda merdiven yok
+        swimSettings.mStickToFloorStepDown = JPH::Vec3::sZero(); // zemine yapisma yok
+        character->ExtendedUpdate(dt, JPH::Vec3::sZero(), swimSettings,
+                                  physics->GetDefaultBroadPhaseLayerFilter(layer),
+                                  physics->GetDefaultLayerFilter(layer), JPH::BodyFilter{},
+                                  JPH::ShapeFilter{}, *tempAllocator);
+        return;
+    }
+
     JPH::Vec3 newVelocity;
     if (character->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround) {
         // Zeminde: zemin hizini devral (hareketli platform destegi) + girdi
@@ -115,6 +132,37 @@ void CharacterController::Teleport(const Vec3& worldPosition) {
     character->RefreshContacts(physics->GetDefaultBroadPhaseLayerFilter(layer),
                                physics->GetDefaultLayerFilter(layer), JPH::BodyFilter{},
                                JPH::ShapeFilter{}, *tempAllocator);
+}
+
+JPH::RefConst<JPH::Shape> CharacterController::MakeCapsule(float totalHeight) const {
+    // Kapsul, karakterin AYAK noktasi orijinde olacak sekilde yukari
+    // kaydirilir (Jolt'un kendi karakter ornekleriyle ayni kurulum) --
+    // boylece GetWorldTransform().position dogrudan ayak/zemin noktasidir.
+    const float cylinderHalfHeight = std::max(0.05f, 0.5f * totalHeight - config.radius);
+    JPH::RotatedTranslatedShapeSettings shapeSettings(
+        JPH::Vec3(0, cylinderHalfHeight + config.radius, 0), JPH::Quat::sIdentity(),
+        new JPH::CapsuleShape(cylinderHalfHeight, config.radius));
+    shapeSettings.SetEmbedded();
+    return shapeSettings.Create().Get();
+}
+
+bool CharacterController::SetCrouch(bool crouch) {
+    if (!character || !physics || crouch == crouching) return crouch == crouching;
+    const float targetHeight = crouch ? config.crouchHeight : config.height;
+    // SetShape penetrasyon kontrolu yapar: ayaga kalkarken tavan varsa
+    // false doner ve sekil degismez (comelmede kaliriz).
+    const bool ok = character->SetShape(MakeCapsule(targetHeight), 0.01f,
+                                        physics->GetDefaultBroadPhaseLayerFilter(layer),
+                                        physics->GetDefaultLayerFilter(layer), JPH::BodyFilter{},
+                                        JPH::ShapeFilter{}, *tempAllocator);
+    if (ok) crouching = crouch;
+    return ok;
+}
+
+void CharacterController::SetWaterState(bool inWater, float surfaceY, const Vec3& flowVelocity) {
+    waterValid = inWater;
+    waterSurfaceY = surfaceY;
+    waterFlow = flowVelocity;
 }
 
 void CharacterController::Destroy() {

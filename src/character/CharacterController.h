@@ -39,6 +39,17 @@ struct CharacterControllerConfig {
     float gravity = -9.81f;    // m/s^2 (y ekseni)
     float airControl = 0.25f;  // havadayken yatay girdinin etki oranı [0..1]
     float stepUpHeight = 0.4f; // tek adımda çıkılabilen merdiven yüksekliği (m)
+
+    // Çömelme: kapsül bu boya kısalır (alçak tavan altından geçiş), hız düşer
+    float crouchHeight = 1.1f;
+    float crouchSpeed = 2.0f; // m/s
+
+    // Yüzme: su bilgisi SetWaterState ile dışarıdan verilir (buoyancy.dll'e
+    // bağımlılık kurulamaz — DLL kuralı; çağıran her frame
+    // BuoyancySystem::QueryWaterState sonucunu buraya aktarır)
+    float swimSpeed = 2.5f;         // m/s yatay yüzme
+    float swimRiseSpeed = 1.5f;     // yüzeye doğru kaldırma (m/s)
+    float swimSubmergeDepth = 1.2f; // ayak bu kadar derinse yüzme moduna geçilir
 };
 
 class CHARACTER_API CharacterController {
@@ -60,6 +71,17 @@ public:
     // Zeminde ise bir sonraki Update'te zıplar (havada çağrılırsa yok sayılır).
     void Jump();
 
+    // Çömelme durumu: kapsül kısalır/uzar. Ayağa kalkarken yer yoksa
+    // (alçak tavan) çömelmede kalır ve false döner.
+    bool SetCrouch(bool crouch);
+    bool IsCrouching() const { return crouching; }
+
+    // Su durumu — çağıran her frame BuoyancySystem::QueryWaterState
+    // sonucunu aktarır. inWater=true ve yeterince derinse karakter yüzme
+    // moduna geçer: yerçekimi yerine yüzeye kaldırma + akıntı + yüzme hızı.
+    void SetWaterState(bool inWater, float surfaceY, const Vec3& flowVelocity);
+    bool IsSwimming() const { return swimming; }
+
     // Fizik adımıyla birlikte her frame çağrılır (yerçekimi + hareket +
     // merdiven + zemine yapışma çözümü burada yapılır).
     void Update(float dt);
@@ -78,9 +100,16 @@ private:
     JPH::Ref<JPH::CharacterVirtual> character;
     std::unique_ptr<JPH::TempAllocatorImpl> tempAllocator;
 
+    JPH::RefConst<JPH::Shape> MakeCapsule(float totalHeight) const;
+
     Vec3 moveInput{0, 0, 0};
     bool runInput = false;
     bool jumpRequested = false;
+    bool crouching = false;
+    bool swimming = false;
+    bool waterValid = false;
+    float waterSurfaceY = 0.0f;
+    Vec3 waterFlow{0, 0, 0};
 };
 
 } // namespace alazforge

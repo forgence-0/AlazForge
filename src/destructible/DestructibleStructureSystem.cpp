@@ -207,4 +207,18 @@ JPH::BodyID DestructibleStructureSystem::DetachPieceAsDynamicBody(JPH::PhysicsSy
     return physicsIn.GetBodyInterface().CreateAndAddBody(bodySettings, JPH::EActivation::Activate);
 }
 
+size_t DestructibleStructureSystem::DetachBrokenPieces(JPH::PhysicsSystem& physicsIn,
+                                                       const std::vector<PieceBrokenEvent>& events,
+                                                       std::vector<JPH::BodyID>& outBodies) {
+    size_t created = 0;
+    for (const PieceBrokenEvent& e : events) {
+        const JPH::BodyID body = DetachPieceAsDynamicBody(physicsIn, e.structureId, e.pieceIndex);
+        if (!body.IsInvalid()) {
+            outBodies.push_back(body);
+            ++created;
+        }
+    }
+    return created;
+}
+
 } // namespace alazforge

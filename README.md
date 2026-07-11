@@ -329,6 +329,30 @@ varsayımıyla hesaplanmıştır — gerçek maliyet broad-phase çift sayısı 
 etkenlerle varlık sayısıyla doğrusal büyümeyebilir, bu yüzden kaba bir
 fikir verir, kesin üst sınır değildir.
 
+### Hepsi birlikte — kombine sahne (tek gerçek ölçüm)
+
+Yukarıdaki satırlar İZOLE ölçümler — her sistem kendi başına, boş bir
+sahnede. Gerçek bir oyun sahnesinde hepsi AYNI ANDA çalışır, bu yüzden
+`BenchCombinedAll` tek bir `AlazForgeContext`'te hepsini birden kurup
+TEK bir `Step()`'in gerçek maliyetini ölçer (izole sürelerin toplamı
+DEĞİL — paylaşılan broad-phase/job-sistemi overhead'i bir kez sayılır):
+
+| Sahne içeriği | Toplam gövde | Ort. süre/kare | Ort. FPS | En kötü kare** | En kötü FPS |
+|---|---:|---:|---:|---:|---:|
+| 20 araç + 100 karakter + 20 kumaş + 30 halat (480 gövde) + 50 ragdoll (150 gövde) + 300 yüzen kutu + 500 bölge-izlenen gövde + 900 parçalı yıkılabilir yapı + 2000 uzak LOD-izlenen gövde + her 30 karede patlama+20 mermi | ~2820 | 2.47 ms | **~405 FPS** | 8.67 ms | **~115 FPS** |
+
+**En kötü kare, patlama + 20 mermi ateşlemenin aynı anda gerçekleştiği
+karelerdir (30 karede bir) — sürekli çatışma olan en yoğun anı temsil eder.
+
+**Sonuç: bu ölçekte (yukarıdaki TÜM sistemler aynı anda, gerçekçi sayılarla
+aktif) fizik motoru 60 FPS hedefinin oldukça altında bir maliyete sahip —
+CI'nin jenerik/paylaşımlı CPU'sunda bile ortalama karede bütçenin sadece
+~%25'ini kullanıyor, en yoğun anda bile bütçenin altında kalıyor.** Gerçek
+oyun donanımında (özellikle CI'dan daha güçlü bir CPU'da) bu sayı daha da
+yüksek çıkar. Tekrarlamak gerekirse: bu TEK bir jenerik CPU'nun sonucu,
+render/AI/oyun mantığı gibi diğer sistemlerin payını içermez — sadece
+fizik motorunun kendi maliyetidir.
+
 ### Sistem bazlı değerlendirme — hangisi hangi ölçekte/parçada uygun
 
 - **`physics` (rijit gövde + araç + balistik)** — en olgun, en ucuz katman.

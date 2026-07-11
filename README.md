@@ -7,14 +7,14 @@ edilir, kendi mimarisiyle genişletilir.
 
 ## Kütüphaneler
 
-Derleme çıktısı 16 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
+Derleme çıktısı 18 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
 `destructible`/`ragdoll`/`sportsball`/`character`/`rope`/`debugdraw`/
-`zones`/`cloth`/`aero`/`audio`/`lod` yalnızca `physics`'e bağımlıdır, birbirlerine
-değil; `physics` da yalnızca `jolt`'a bağımlıdır. **`context` bu kuralın
-bilinçli tek istisnasıdır**: AlazEngine'in tek giriş noktası olması için
-`zones`/`buoyancy`/`lod`/`audio`/`debugdraw`/`destructible`'ı da sarmalar
-(aşağıda [AlazForgeContext](#alazforgecontext--entegrasyon-noktası) bölümüne
-bakın):
+`zones`/`cloth`/`aero`/`audio`/`lod`/`magnetism`/`fire` yalnızca `physics`'e
+bağımlıdır, birbirlerine değil; `physics` da yalnızca `jolt`'a bağımlıdır.
+**`context` bu kuralın bilinçli tek istisnasıdır**: AlazEngine'in tek giriş
+noktası olması için `zones`/`buoyancy`/`lod`/`audio`/`debugdraw`/`destructible`'ı
+da sarmalar (aşağıda [AlazForgeContext](#alazforgecontext--entegrasyon-noktası)
+bölümüne bakın):
 
 ```
 jolt.dll  <-  physics.dll  <-  weapons.dll
@@ -32,6 +32,8 @@ jolt.dll  <-  physics.dll  <-  weapons.dll
                             <-  lod.dll ─────────────┤
                                                       ▼
                                                 context.dll (hepsini sarmalar)
+                            <-  magnetism.dll
+                            <-  fire.dll
 ```
 
 Her hedef `add_library(... SHARED ...)` ile tanımlı; Windows/MSVC'de bu,
@@ -56,12 +58,14 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | **aero** | `aero.dll` + `aero.lib` | `libaero.so` | Paraşüt + planör/wingsuit aerodinamiği (taşıma + sürükleme) |
 | **audio** | `audio.dll` + `audio.lib` | `libaudio.so` | `JPH::ContactListener` tabanlı çarpışma-olayı köprüsü: şiddet + malzeme etiketli olay kuyruğu, ses tetikleme için |
 | **lod** | `lod.dll` + `lod.lib` | `liblod.so` | Mesafeye göre genel amaçlı gövde uyutma/uyandırma (LOD) — uzak dinamik gövdeleri histerezisli zorla uyutur |
+| **magnetism** | `magnetism.dll` + `magnetism.lib` | `libmagnetism.so` | Manyetik/çekim alanları — izlenen gövdelere ters-kare radyal kuvvet (çekme/itme) |
+| **fire** | `fire.dll` + `fire.lib` | `libfire.so` | Ateş/yanma yayılım simülasyonu — zaman-biriktirmeli, deterministik düğüm-graf yayılımı (Jolt'a bağımlı değil) |
 
 > `.lib` dosyaları Windows'ta consumer'ın (AlazEngine) derleme zamanında DLL'e
 > bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
 > yükleme zamanında asıl `.dll` gerekir. Tüm kütüphaneler (Jolt'un `jolt.dll`
 > olarak SHARED derlenmesi dahil) gerçek submodule checkout'uyla lokal olarak
-> derlenip 26/26 testle doğrulandı.
+> derlenip 29/29 testle doğrulandı.
 
 ## Modüller
 
@@ -88,6 +92,9 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | `src/aero` | aero | Paraşüt/planör aerodinamiği |
 | `src/audio` | audio | Çarpışma-olayı → ses tetikleme köprüsü (`ContactListener` tabanlı) |
 | `src/lod` | lod | Mesafeye göre gövde uyutma/uyandırma (genel amaçlı LOD) |
+| `src/vehicle/TrackBeltSystem` | physics | Genel kayış/tırtıl link yerleşim geometrisi (N eşit-yarıçaplı makara etrafında) |
+| `src/magnetism` | magnetism | Manyetik/çekim alanları (radyal çekme/itme kuvveti) |
+| `src/fire` | fire | Ateş/yanma yayılım simülasyonu (deterministik düğüm-graf) |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
@@ -231,7 +238,7 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 ## AlazForgeContext — entegrasyon noktası
 
 `AlazForgeContext`, AlazEngine'in bu repoyu kullanmaya başlaması için TEK
-giriş noktasıdır — demo/prototip değil, 26 testle doğrulanmış gerçek bir
+giriş noktasıdır — demo/prototip değil, 29 testle doğrulanmış gerçek bir
 entegrasyon yüzeyi. Amaç: AlazEngine bir `AlazForgeContext` `new` edip her
 frame `Step()` çağırsın; 16 ayrı DLL'i elle birbirine bağlamak zorunda
 kalmasın.
@@ -293,6 +300,35 @@ eklendi, ayrı dosya açılmadı. Hepsi gerçek regresyon senaryosu kurup
 doğrulandı (örn. yıkım kalıcılığı için iki ayrı `DestructibleStructureSystem`
 örneği: biri kırıp diske yazıyor, diğeri aynı `savePath`'ten yeniden
 kurulup kırık durumun geri geldiğini kanıtlıyor).
+
+### S3 — zincir/tırtıl genellemesi + manyetik alanlar + ateş yayılımı
+
+- **Tekerlek/tırtıl render sorgusu** (`VehicleSystem::WheelCount` +
+  `GetWheelTransform`) — daha önce hiçbir tekerlek/tırtıl transform'u dışa
+  açılmıyordu (AlazEngine tekerlekleri görsel olarak döndüremiyordu).
+  `JPH::VehicleConstraint::GetWheelWorldTransform`'u sarar; hem tekerlekli
+  hem paletli araçlarda çalışır.
+- **`TrackBeltSystem`** (`src/vehicle/TrackBeltSystem`) — GENEL bir
+  geometri yardımcısı (tek bir araca özel değil): eşit yarıçaplı N
+  makara/tekerlek etrafına sarılı kapalı bir kayışın (tank tırtılı,
+  konveyör bant) dış çevresini hesaplayıp üzerine eşit aralıklı link
+  transform'ları yerleştirir. Saf geometri — Jolt gövdesi oluşturmaz,
+  yalnızca "link'ler nerede duruyor" sorusuna render için cevap verir.
+  Kısıt: tüm makaralar aynı yarıçapta ve tek düzlemde olmalı (gerçek tank
+  tırtıllarıyla aynı varsayım).
+- **`magnetism.dll` (`MagneticFieldSystem`)** — `buoyancy`/`zones` ile
+  aynı desen: yalnızca `TrackBody` ile işaretlenen gövdelere, kaynağa
+  göre ters-kare kuvvet uygular (çekme veya `repel=true` ile itme).
+  Yarıçap dışı etkisiz, `minDistance` ile kuvvet sonsuza gitmez.
+- **`fire.dll` (`FireSpreadSystem`)** — zaman-biriktirmeli, deterministik
+  yanma yayılımı: yanan bir düğüm, yarıçapındaki her yanabilir düğüme her
+  `Update(dt)`'de maruziyet ekler; eşik dolunca tutuşur, süresi dolunca
+  söner (bir daha tutuşmaz). Jolt'a bağımlı değil — saf graf/zaman
+  simülasyonu, oyun tarafı düğümleri destructible parçalarına veya ayrı
+  bir "yanabilir nesne" listesine eşleyebilir.
+
+Yeni `track_belt`/`magnetism`/`fire_spread` testleriyle 29/29 yerel ctest
+yeşil.
 
 ## Performans — sistem bazlı ölçüm
 
@@ -433,7 +469,7 @@ zaten gerekmiyor).
 
 ## Test
 
-26 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+29 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -463,13 +499,16 @@ zaten gerekmiyor).
 | `s1_collision_damage` | Çarpışma olayı eşik/malzeme etiketleme + araç hasar modeli eşiği |
 | `lod_system` | Mesafeye göre zorla uyutma/uyandırma + histerezis |
 | `realism4` | Araç hava direnci, balistik spin drift + determinizm, su derinlik direnci, halat kopması |
+| `track_belt` | Araç tekerlek transform sorgusu + TrackBeltSystem kayış geometrisi |
+| `magnetism` | Manyetik alan çekme/itme + yarıçap sınırı |
+| `fire_spread` | Ateş yayılımı (eşik/yarıçap/yanmazlık), sönme, determinizm |
 
 ## Build
 
-AlazForge 16 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
+AlazForge 18 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
 `buoyancy`, `destructible`, `ragdoll`, `context`, `sportsball`, `character`,
-`rope`, `debugdraw`, `zones`, `cloth`, `aero`, `audio`, `lod`). Bkz.
-[Kütüphaneler](#kütüphaneler).
+`rope`, `debugdraw`, `zones`, `cloth`, `aero`, `audio`, `lod`, `magnetism`,
+`fire`). Bkz. [Kütüphaneler](#kütüphaneler).
 
 ```
 git clone --recursive <repo-url>

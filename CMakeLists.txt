@@ -42,6 +42,7 @@ add_library(physics SHARED
     src/terrain_deform/TerrainDeformSystem.cpp
     src/vehicle/WreckPersistence.cpp
     src/vehicle/VehicleSystem.cpp
+    src/vehicle/TrackBeltSystem.cpp
     src/ballistics/BallisticsSystem.cpp
     src/wind/WindSystem.cpp
 )
@@ -135,6 +136,12 @@ alazforge_add_helper_library(aero AERO_API src/aero/AeroSystem.cpp)
 
 # zones.dll — sürtünme bölgeleri (buz/çamur/yağ zemin koşulları)
 alazforge_add_helper_library(zones ZONES_API src/zones/FrictionZoneSystem.cpp)
+
+# magnetism.dll — manyetik/çekim alanları (izlenen gövdelere radyal kuvvet)
+alazforge_add_helper_library(magnetism MAGNETISM_API src/magnetism/MagneticFieldSystem.cpp)
+
+# fire.dll — ateş/yanma yayılım simülasyonu (Jolt'a bağımlı değil, saf graf)
+alazforge_add_helper_library(fire FIRE_API src/fire/FireSpreadSystem.cpp)
 
 # cloth.dll — Jolt SoftBody tabanlı kumaş/bayrak simülasyonu
 alazforge_add_helper_library(cloth CLOTH_API src/cloth/ClothSystem.cpp)

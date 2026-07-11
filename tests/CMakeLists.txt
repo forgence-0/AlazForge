@@ -128,6 +128,21 @@ target_link_libraries(alazforge_test_terrain_collision PRIVATE physics debugdraw
 
 add_test(NAME terrain_collision COMMAND alazforge_test_terrain_collision)
 
+add_executable(alazforge_test_track_belt TrackBeltTest.cpp)
+target_link_libraries(alazforge_test_track_belt PRIVATE physics)
+
+add_test(NAME track_belt COMMAND alazforge_test_track_belt)
+
+add_executable(alazforge_test_magnetism MagneticFieldTest.cpp)
+target_link_libraries(alazforge_test_magnetism PRIVATE magnetism)
+
+add_test(NAME magnetism COMMAND alazforge_test_magnetism)
+
+add_executable(alazforge_test_fire FireSpreadTest.cpp)
+target_link_libraries(alazforge_test_fire PRIVATE fire)
+
+add_test(NAME fire_spread COMMAND alazforge_test_fire)
+
 # Bilgilendirici benchmark -- ctest'e kayitli degil, CI ayri adimda kosar
 add_executable(alazforge_bench BenchmarkMain.cpp)
 target_link_libraries(alazforge_bench PRIVATE context character rope ragdoll cloth weapons)

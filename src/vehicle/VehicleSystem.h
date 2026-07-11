@@ -128,6 +128,16 @@ public:
 
     JPH::VehicleConstraint* Constraint() { return constraint; }
 
+    // ── Tekerlek/tırtıl teker sorguları (render için) ────────────────
+    // Aks sırasına göre 2 tekerlek/aks (sol=2i, sağ=2i+1) — hem
+    // CreateWheeled hem CreateTracked için aynı indeksleme.
+    int WheelCount() const;
+    // Dönen dünya transform'u (dönüş açısı + direksiyon dahil) --
+    // localForward/localUp tekerlek modelinin yerel eksenleri (render
+    // mesh'ine göre değişebilir, varsayılan +z ileri / +y yukarı).
+    Transform GetWheelTransform(int wheelIndex, const Vec3& localForward = Vec3{0, 0, 1},
+                                const Vec3& localUp = Vec3{0, 1, 0}) const;
+
     // ── Hasar modeli ────────────────────────────────────────────────
     // impactSpeed (m/s, çarpışma normali doğrultusunda bağıl hız —
     // CollisionEventSystem::CollisionEvent::impactSpeed ile doğrudan

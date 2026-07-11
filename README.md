@@ -294,6 +294,98 @@ doğrulandı (örn. yıkım kalıcılığı için iki ayrı `DestructibleStructu
 örneği: biri kırıp diske yazıyor, diğeri aynı `savePath`'ten yeniden
 kurulup kırık durumun geri geldiğini kanıtlıyor).
 
+## Performans — sistem bazlı ölçüm
+
+`tests/BenchmarkMain.cpp` (`build/tests/alazforge_bench`, `ctest`'e kayıtlı
+DEĞİL — CI'da ayrı, bilgilendirici bir adım olarak çalışır) her fizik alt
+sistemini KENDİ gerçekçi senaryosunda, kendi `AlazForgeContext`'inde ayrı
+ayrı ölçer.
+
+> **Bu sayılar CI'nin jenerik runner CPU'sunda ölçüldü — hedef oyun
+> donanımınızdaki MUTLAK FPS'i temsil etmez.** Değerleri kendi
+> makinenizde `./build/tests/alazforge_bench` çalıştırarak yeniden üretin.
+> Buradaki asıl değer, sistemler ARASI GÖRECELİ maliyet karşılaştırmasıdır:
+> hangi sistem hangi varlık sayısında ne kadar pahalı, hangisi ucuz.
+
+| Kütüphane | Senaryo | Varlık | Ort. süre | 60 FPS bütçesindeki payı* |
+|---|---|---:|---:|---:|
+| `physics` | 1200 dinamik kutu yığını (genel rijit gövde, taban çizgisi) | 1200 | 1.02 ms | %6 |
+| `physics` | 20 tekerlekli araç (tam gaz, `Step` dahil) | 20 | 0.26 ms | %1.5 |
+| `physics` | 500 mermi atışı (`BallisticsSystem::Fire`, toplu) | 500 | 0.64 ms (0.0013 ms/mermi) | %4 |
+| `character` | 100 karakter yürüme (`Update` + `Step`) | 100 | 0.11 ms | %0.7 |
+| `cloth` | 20 kumaş parçası (12×10 = 2400 vertex, `ApplyWind`+`Step`) | 2400 vertex | 0.44 ms | %2.6 |
+| `rope` | 30 halat (16 segment = 480 gövde, `Step`) | 480 gövde | 2.40 ms | **%14** |
+| `ragdoll` | 50 ragdoll (3 kemik = 150 gövde, `Step`) | 150 gövde | 0.36 ms | %2.2 |
+| `buoyancy` | 300 yüzen kutu (dalgalı yüzey, `Step`) | 300 | 0.33 ms | %2 |
+| `zones` | 500 izlenen gövde (bölge giriş/çıkış sorgusu, `Step`) | 500 | 0.32 ms | %1.9 |
+| `destructible` | 900 parçalı yapı, steady-state (`Step`) | 900 parça | 0.001 ms | ~%0 |
+| `destructible` | Geniş yarıçaplı hasar + kademeli çökme (BFS, toplu) | 900 parça | 0.005 ms/çağrı | ~%0 |
+| `weapons` | 500 gövdeye patlama (`ExplosionSystem::Detonate`, toplu) | 500 | 0.11 ms | %0.6 |
+| `lod` | 2000 uzak gövde, LOD **YOK** (`Step`) | 2000 | 1.04 ms | %6.3 |
+| `lod` | 2000 uzak gövde, LOD **VAR** (`Step`) | 2000 | 0.11 ms | %0.7 |
+
+*60 FPS'de bir kareye ayrılan bütçe 16.6 ms'dir; oran doğrusal ölçekleme
+varsayımıyla hesaplanmıştır — gerçek maliyet broad-phase çift sayısı gibi
+etkenlerle varlık sayısıyla doğrusal büyümeyebilir, bu yüzden kaba bir
+fikir verir, kesin üst sınır değildir.
+
+### Sistem bazlı değerlendirme — hangisi hangi ölçekte/parçada uygun
+
+- **`physics` (rijit gövde + araç + balistik)** — en olgun, en ucuz katman.
+  1200 kutu yığını bile bütçenin ~%6'sını kullanıyor; büyük açık dünya
+  sahnelerinde binlerce statik/uykuda gövde sorun değil (Jolt'un kendi
+  uyku mekanizması + `lod.dll` ile daha da ucuzlaşır). Araç fiziği ucuz
+  (araç başına ~0.013 ms) — 20-40 araçlı bir konvoy/trafik sahnesi rahat.
+  Balistik mermi başına ~0.0013 ms — saniyede binlerce mermi (otomatik
+  silah sürüleri, shotgun saçması) sorun yaratmaz.
+- **`character`** — en ucuz sistemlerden biri (karakter başına ~0.0011 ms).
+  100 NPC/kalabalık sahnesi bütçenin %1'inden az; yüzlerce NPC'li kalabalık
+  sahneleri (pazar yeri, savaş alanı) rahatlıkla desteklenir.
+- **`rope` — dikkat edilmesi gereken en pahalı sistem.** 480 gövdelik
+  (30 halat × 16 segment) senaryo bütçenin **%14**'ünü tek başına yiyor —
+  segment başına maliyet rijit gövdeden ~3× daha yüksek (her segment bir
+  top-eklem constraint'i çözüyor). **Öneri**: sahne başına halat sayısını
+  sınırlı tutun (vinç halatı, çekme halatı gibi az sayıda "hero" nesne için
+  uygun), çok sayıda dekoratif halat/kablo gerekiyorsa `segmentCount`'u
+  düşürün (8-10 segment çoğu görsel amaç için yeterli) veya uzak halatları
+  elle basitleştirin (LOD sistemi şu an segment-bazlı değil, gövde-bazlı
+  uyutma yapar — halat tamamen uykuya geçene kadar tüm segmentler aktif
+  kalır).
+- **`cloth`** — orta maliyetli ama vertex başına ucuz (2400 vertex için
+  0.44 ms, ~%2.6). Bayrak, çadır bezi, perde gibi az sayıda (sahne başına
+  5-20) "hero" kumaş nesnesi için uygun; yüzlerce küçük kumaş parçasından
+  oluşan bir sahne (örn. yaprak/konfeti simülasyonu) için tasarlanmadı.
+- **`ragdoll`** — ucuz (150 gövde için 0.36 ms). Aynı anda 10-20 aktif
+  ragdoll (çok kişili bir çatışma sahnesinin ölüm anları) rahat; ragdoll'lar
+  kalıcı değil (tek seferlik "ölüm anı" fiziği), bu yüzden aynı anda çok
+  fazla birikmesi beklenmez — birikirse `LOD`/despawn ile temizlenmeli.
+- **`buoyancy` / `zones`** — ikisi de hafif (300-500 izlenen gövde için
+  ~%2). Açık dünya su/buz/çamur sahnelerinde yüzlerce gövdeyi aynı anda
+  izlemek sorun değil.
+- **`destructible`** — ölçülemeyecek kadar ucuz (900 parça steady-state
+  ~0.001 ms, kademeli çökme dahi ~0.005 ms/çağrı) çünkü parçalar STATİK
+  gövdeler — Jolt'un broad phase'i onları neredeyse bedava tutuyor.
+  Gerçek maliyet, kırılan parçaları `DetachPieceAsDynamicBody` ile dinamik
+  enkaza çevirdiğinizde ortaya çıkar (o zaman `physics` rijit-gövde
+  maliyetine döner) — bu yüzden aynı anda çok fazla enkaz parçasını
+  dinamikleştirmekten kaçının (birkaç saniye sonra despawn/statikleştirin).
+- **`weapons` (patlama)** — ucuz (500 gövdeye tek patlama 0.11 ms).
+  Saniyede birkaç patlama (roket/el bombası/topçu) sorun değil; saniyede
+  onlarca eşzamanlı patlama (halı bombardımanı) test edilmedi.
+- **`lod` — maliyet değil, TASARRUF sistemi.** 2000 uzak gövdede LOD
+  kapalıyken 1.04 ms/adım, açıkken 0.11 ms/adım — **~9× hızlanma**. Büyük
+  açık dünya sahnelerinde (oyuncudan uzak yüzlerce/binlerce fizik nesnesi
+  olan bir harita) `Step()`'e her frame oyuncu pozisyonunu vermek neredeyse
+  bedavaya CPU tasarrufu sağlar; tek maliyeti `LODSystem::Update`'in kendi
+  döngü taraması (izlenen gövde sayısıyla doğrusal, çok ucuz).
+- **`audio` (çarpışma-ses olayları)** ve **`aero`/`sportsball` (paraşüt/
+  top fiziği)** ayrı ölçülmedi çünkü maliyetleri kendi başlarına anlamlı
+  değil: `audio` bir `ContactListener` callback'i (Jolt zaten her temas
+  için tetikliyor, ekstra maliyeti O(1) bir kayıt işlemi); `aero`/
+  `sportsball` tek bir gövdeye her frame uygulanan bir kuvvet hesabı
+  (birkaç float çarpımı) — asıl maliyet o gövdenin kendisi zaten `physics`
+  rijit-gövde satırında ölçülüyor.
+
 ## Test
 
 26 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):

@@ -130,4 +130,4 @@ add_test(NAME terrain_collision COMMAND alazforge_test_terrain_collision)
 
 # Bilgilendirici benchmark -- ctest'e kayitli degil, CI ayri adimda kosar
 add_executable(alazforge_bench BenchmarkMain.cpp)
-target_link_libraries(alazforge_bench PRIVATE context)
+target_link_libraries(alazforge_bench PRIVATE context character rope ragdoll cloth weapons)

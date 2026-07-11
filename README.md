@@ -7,9 +7,9 @@ edilir, kendi mimarisiyle genişletilir.
 
 ## Kütüphaneler
 
-Derleme çıktısı 14 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
+Derleme çıktısı 16 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
 `destructible`/`ragdoll`/`context`/`sportsball`/`character`/`rope`/`debugdraw`/
-`zones`/`cloth`/`aero` yalnızca `physics`'e bağımlıdır, birbirlerine değil; `physics` da yalnızca
+`zones`/`cloth`/`aero`/`audio`/`lod` yalnızca `physics`'e bağımlıdır, birbirlerine değil; `physics` da yalnızca
 `jolt`'a bağımlıdır:
 
 ```
@@ -25,6 +25,8 @@ jolt.dll  <-  physics.dll  <-  weapons.dll
                             <-  zones.dll
                             <-  cloth.dll
                             <-  aero.dll
+                            <-  audio.dll
+                            <-  lod.dll
 ```
 
 Her hedef `add_library(... SHARED ...)` ile tanımlı; Windows/MSVC'de bu,
@@ -47,12 +49,14 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | **zones** | `zones.dll` + `zones.lib` | `libzones.so` | Sürtünme bölgeleri: buz/çamur/yağ zemin koşulları (gövde friction'ı bölgeye göre değişir) |
 | **cloth** | `cloth.dll` + `cloth.lib` | `libcloth.so` | Jolt SoftBody kumaş/bayrak simülasyonu (rüzgarda dalgalanır) |
 | **aero** | `aero.dll` + `aero.lib` | `libaero.so` | Paraşüt + planör/wingsuit aerodinamiği (taşıma + sürükleme) |
+| **audio** | `audio.dll` + `audio.lib` | `libaudio.so` | `JPH::ContactListener` tabanlı çarpışma-olayı köprüsü: şiddet + malzeme etiketli olay kuyruğu, ses tetikleme için |
+| **lod** | `lod.dll` + `lod.lib` | `liblod.so` | Mesafeye göre genel amaçlı gövde uyutma/uyandırma (LOD) — uzak dinamik gövdeleri histerezisli zorla uyutur |
 
 > `.lib` dosyaları Windows'ta consumer'ın (AlazEngine) derleme zamanında DLL'e
 > bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
 > yükleme zamanında asıl `.dll` gerekir. Tüm kütüphaneler (Jolt'un `jolt.dll`
 > olarak SHARED derlenmesi dahil) gerçek submodule checkout'uyla lokal olarak
-> derlenip 22/22 testle doğrulandı.
+> derlenip 24/24 testle doğrulandı.
 
 ## Modüller
 
@@ -77,6 +81,8 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | `src/zones` | zones | Sürtünme bölgeleri (buz/çamur — girince friction değişir, çıkınca döner) |
 | `src/cloth` | cloth | Kumaş/bayrak (Jolt SoftBody grid + rüzgar sürüklemesi) |
 | `src/aero` | aero | Paraşüt/planör aerodinamiği |
+| `src/audio` | audio | Çarpışma-olayı → ses tetikleme köprüsü (`ContactListener` tabanlı) |
+| `src/lod` | lod | Mesafeye göre gövde uyutma/uyandırma (genel amaçlı LOD) |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
@@ -183,9 +189,24 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
   üstte: kendini dikleştirir) + basitleştirilmiş kanat taşıması; rüzgarla
   birleşir.
 
+### S1 — Entegrasyon + performans
+
+- **Ses tetikleyicileri** (`src/audio/CollisionEventSystem`) — tek
+  process-genelinde `JPH::ContactListener` iki gövdenin çarpma hızını ve
+  malzeme ID'lerini olay kuyruğuna yazar; eşik altı temaslar filtrelenir,
+  gerçek ses çalma AlazEngine tarafında kalır (DLL bağımsızlık kuralı).
+- **Araç hasar modeli** (`VehicleSystem::ApplyImpactDamage`) — çarpışma
+  hızı bir eşiği geçince motor torku doğrusal olarak azalır, araç yeterince
+  hasar görünce sürülemez hale gelir. Jolt kısıtı: tekerlek `WheelSettings`
+  kurulumdan sonra değiştirilemediği için direksiyon/fren hasarı
+  modellenemiyor — yalnızca motor torku ölçeklenir.
+- **LOD** (`src/lod/LODSystem`) — referans noktasından (oyuncu) uzak
+  gövdeler histerezisli olarak zorla uyutulur/uyandırılır; Jolt'un kendi
+  uyku mekanizmasından bağımsız, mesafeye dayalı CPU tasarrufu.
+
 ## Test
 
-22 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+24 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -211,11 +232,14 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 | `realism` | Rüzgar determinizmi, balistik rüzgar sürüklenmesi, patlama siperi, malzeme sürtünmesi |
 | `realism2` | Dalgalı su yüzeyi, sürtünme bölgeleri, kumaş+rüzgar, lastik tutunması |
 | `realism3` | Çömelme/alçak tavan, yüzme+akıntı, fırlatma yörüngesi, enkaz, paraşüt/planör |
+| `s1_collision_damage` | Çarpışma olayı eşik/malzeme etiketleme + araç hasar modeli eşiği |
+| `lod_system` | Mesafeye göre zorla uyutma/uyandırma + histerezis |
 
 ## Build
 
-AlazForge 8 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
-`buoyancy`, `destructible`, `ragdoll`, `context`, `sportsball`). Bkz.
+AlazForge 16 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
+`buoyancy`, `destructible`, `ragdoll`, `context`, `sportsball`, `character`,
+`rope`, `debugdraw`, `zones`, `cloth`, `aero`, `audio`, `lod`). Bkz.
 [Kütüphaneler](#kütüphaneler).
 
 ```

@@ -98,6 +98,16 @@ target_link_libraries(alazforge_test_realism3 PRIVATE character weapons destruct
 
 add_test(NAME realism3 COMMAND alazforge_test_realism3)
 
+add_executable(alazforge_test_s1 S1Test.cpp)
+target_link_libraries(alazforge_test_s1 PRIVATE audio physics)
+
+add_test(NAME s1_collision_damage COMMAND alazforge_test_s1)
+
+add_executable(alazforge_test_lod LODSystemTest.cpp)
+target_link_libraries(alazforge_test_lod PRIVATE lod)
+
+add_test(NAME lod_system COMMAND alazforge_test_lod)
+
 add_executable(alazforge_test_world_state WorldStateTest.cpp)
 target_link_libraries(alazforge_test_world_state PRIVATE context)
 

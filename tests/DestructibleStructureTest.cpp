@@ -8,6 +8,7 @@
 #include "destructible/DestructibleStructureSystem.h"
 
 #include <cstdio>
+#include <filesystem>
 
 using namespace alazforge;
 using namespace alazforge_test;
@@ -31,7 +32,17 @@ int main() {
     MaterialDatabase materials = MaterialDatabase::CreateDefault();
     const MaterialId concrete = materials.FindByName("concrete"); // brittleness 0.60
 
+    // Izole/temiz kayit dizini -- varsayilan gorece "destructible" yolu
+    // kosular arasi (hatta ayni testin tekrar calismalari arasi) kalicilik
+    // paylasirdi; RegisterStructure artik diskteki kirik-parca kayitlarini
+    // geri yukledigi icin (bkz. DestructibleStructureSystem.cpp) onceki
+    // kosudan kalan veri bu testin sayimlarini bozardi.
+    const std::string saveDir =
+        (std::filesystem::temp_directory_path() / "alazforge_destructible_test").string();
+    std::filesystem::remove_all(saveDir);
+
     DestructibleStructureSystem::Config sysConfig;
+    sysConfig.savePath = saveDir;
     DestructibleStructureSystem destructible(sysConfig);
 
     StructureConfig wall;
@@ -94,6 +105,46 @@ int main() {
     JPH::BodyID stale; // gecersiz BodyID -> bulunamamali
     CHECK(!destructible.FindPieceByBodyID(stale, foundStructure, foundPiece),
           "gecersiz BodyID icin parca bulunamadi");
+
+    // ── Sifir yaricapli ApplyDamageRadius: dist/radius NaN olmamali;
+    // sol-alt parca (0,0) tam merkez noktada (0,0,0), tam hasar almali ────
+    printf("[Sifir yaricapli hasar]\n");
+    {
+        std::vector<PieceBrokenEvent> radiusEvents;
+        CHECK(!destructible.IsPieceBroken(1, PieceIdx(0, 0)),
+              "sol-alt parca hala saglam (on kosul)");
+        destructible.ApplyDamageRadius(1, Vec3{0, 0, 0}, 200.0f, 0.0f, radiusEvents);
+        CHECK(destructible.IsPieceBroken(1, PieceIdx(0, 0)),
+              "sifir yaricapta tam-isabet parca kirildi (NaN degil)");
+    }
+
+    // ── Kalicilik geri-yukleme: ayni savePath'e bakan YENI bir sistem,
+    // RegisterStructure cagrildiginda diskteki kirik-parca kayitlarini
+    // okuyup uygulamali (onceden yalnizca YAZMA calisiyordu, OKUMA yoktu --
+    // bu blok gercek geri-yuklemeyi kanitlar) ──────────────────────────
+    destructible.Flush();
+    printf("[DestructibleStructureSystem - kalicilik geri-yukleme]\n");
+    {
+        DestructibleStructureSystem reloaded(sysConfig);
+        reloaded.RegisterStructure(world.physics, Layers::NON_MOVING, materials, wall);
+
+        CHECK(reloaded.IsPieceBroken(1, PieceIdx(0, 1)),
+              "yeniden yuklenen sistemde dogrudan kirilan parca kirik geliyor");
+        CHECK(reloaded.IsPieceBroken(1, PieceIdx(1, 1)),
+              "yeniden yuklenen sistemde kademeli kirilan parca kirik geliyor");
+        CHECK(reloaded.IsPieceBroken(1, PieceIdx(2, 1)),
+              "yeniden yuklenen sistemde kademeli kirilan ikinci parca kirik geliyor");
+        CHECK(reloaded.IsPieceBroken(1, PieceIdx(0, 0)),
+              "yeniden yuklenen sistemde sifir-yaricap testinde kirilan parca da kirik geliyor");
+        // NOT: sifir-yaricap testi sol-alt (0,0) parcasini kirdi; bu da ayni
+        // sutundaki (2,0)'ye kadar kademeli cokmeye yol acti (destek zinciri
+        // her sutunda ayni) -- bu yuzden "hala saglam" kontrolu icin sag
+        // sutundan (hicbir zaman dokunulmayan) bir parca kullanilir.
+        CHECK(!reloaded.IsPieceBroken(1, PieceIdx(2, 2)),
+              "yeniden yuklenen sistemde ilgisiz saglam parca hala saglam");
+    }
+
+    std::filesystem::remove_all(saveDir);
 
     if (g_failCount == 0) {
         printf("TEST BASARILI: DestructibleStructureSystem kademeli cokmeyi dogru uyguluyor.\n");

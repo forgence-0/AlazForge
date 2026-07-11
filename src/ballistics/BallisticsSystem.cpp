@@ -22,7 +22,17 @@ BulletSimResult BallisticsSystem::Fire(const BulletParams& bullet, const Vec3& o
                                        const Vec3& direction, float maxFlightTime) {
     BulletSimResult result;
 
-    JPH::Vec3 dir = ToJolt(direction).Normalized();
+    // Sifir (veya sifira yakin) yon vektoru Normalized()'i NaN'a goturur --
+    // gecersiz atis olarak ele alinir, mermi hemen durur.
+    const JPH::Vec3 dirRaw = ToJolt(direction);
+    if (dirRaw.LengthSq() < 1.0e-12f) {
+        result.finalPosition = origin;
+        result.finalVelocity = Vec3{0, 0, 0};
+        result.stopped = true;
+        return result;
+    }
+
+    JPH::Vec3 dir = dirRaw.Normalized();
     JPH::RVec3 pos = ToJoltR(origin);
     JPH::Vec3 vel = dir * bullet.muzzleVelocity;
 

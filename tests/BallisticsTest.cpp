@@ -134,6 +134,16 @@ int main() {
         world.physics.GetBodyInterface().DestroyBody(plate);
     }
 
+    // ── Sifir yon vektoru: Normalized() NaN'a gitmemeli, gecersiz atis
+    // olarak hemen durmali ──────────────────────────────────────────────
+    printf("[Sifir yon vektoru]\n");
+    {
+        BulletSimResult r = ballistics.Fire(rifle, Vec3{0, 0, 0}, Vec3{0, 0, 0}, 1.0f);
+        CHECK(r.stopped, "sifir yon vektoru gecersiz atis olarak hemen duruyor");
+        CHECK(r.finalVelocity.x == 0.0f && r.finalVelocity.y == 0.0f && r.finalVelocity.z == 0.0f,
+              "sifir yon vektorunde NaN hiz uretilmiyor");
+    }
+
     if (g_failCount == 0) {
         printf("TEST BASARILI: balistik sistem ve malzeme veritabani dogru calisiyor.\n");
         return 0;

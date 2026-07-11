@@ -264,6 +264,36 @@ ECS'i erişilebilir olduğunda Context, doğrudan component senkronizasyonu
 yapan ince bir köprüye dönüştürülebilir; o zamana kadar da tek başına
 çalışan gerçek bir entegrasyon noktasıdır.
 
+### Sertleştirme — bağımsız kod incelemesinde bulunanlar
+
+Harici bir kod incelemesinde bulunan 5 gerçek sorun, hepsi doğrulanıp
+düzeltildi (yeni testlerle kanıtlandı, sadece kod yorumu değiştirilmedi):
+
+- **Katman haritalama sınır-dışı yazma** — `BPLayerInterfaceImpl`
+  `Config::movingLayer`/`nonMovingLayer`'ı 2 elemanlı sabit bir diziye
+  doğrudan indeksliyordu; AlazEngine kendi katman numaralandırmasında 2/3
+  gibi bir değer verseydi bellek sınırı dışına yazardı. Diziyi kaldırıp
+  karşılaştırmaya geçirildi (diğer filtre sınıflarıyla tutarlı hale
+  getirildi).
+- **Yıkım kalıcılığı tek yönlüydü** — `BreakPiece` kırılan parçaları
+  diske yazıyordu ama `RegisterStructure` bu kayıtları hiç geri okumuyordu;
+  bir yeniden başlatma/reload sonrası tüm kırık yapılar "iyileşmiş"
+  görünürdü. `RegisterStructure` artık her parça için ilgili chunk'ta
+  kayıtlı bir kırık-parça girdisi olup olmadığını kontrol ediyor, varsa
+  gövde hiç oluşturmadan parçayı kırık başlatıyor.
+- **Girdi doğrulama boşlukları** — boş aks listesiyle paletli araç
+  kurulumu `.front()` ile çökerdi (artık sessizce reddediliyor, `Kind()`
+  `None` kalıyor); sıfır yön vektörüyle ateşleme `Normalized()`'i NaN'a
+  götürürdü (artık geçersiz atış olarak hemen duruyor); yarıçap=0 ile
+  terrain/destructible/patlama falloff hesapları `0/0` NaN üretiyordu
+  (üçü de sıfır yarıçapı güvenli şekilde ele alacak şekilde düzeltildi).
+
+Test sayısı 26'da sabit kaldı — yeni assertion'lar mevcut testlere
+eklendi, ayrı dosya açılmadı. Hepsi gerçek regresyon senaryosu kurup
+doğrulandı (örn. yıkım kalıcılığı için iki ayrı `DestructibleStructureSystem`
+örneği: biri kırıp diske yazıyor, diğeri aynı `savePath`'ten yeniden
+kurulup kırık durumun geri geldiğini kanıtlıyor).
+
 ## Test
 
 26 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):

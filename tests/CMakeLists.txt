@@ -108,6 +108,11 @@ target_link_libraries(alazforge_test_lod PRIVATE lod)
 
 add_test(NAME lod_system COMMAND alazforge_test_lod)
 
+add_executable(alazforge_test_realism4 Realism4Test.cpp)
+target_link_libraries(alazforge_test_realism4 PRIVATE physics buoyancy rope)
+
+add_test(NAME realism4 COMMAND alazforge_test_realism4)
+
 add_executable(alazforge_test_world_state WorldStateTest.cpp)
 target_link_libraries(alazforge_test_world_state PRIVATE context)
 

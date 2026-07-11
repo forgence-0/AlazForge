@@ -28,6 +28,14 @@ struct BulletParams {
     float caliberMm = 7.62f;
     float dragFactor = 0.00035f;    // 1/m — kuadratik sürükleme katsayısı
     float penetrationRHAMm = 10.0f; // namlu hızında mm RHA penetrasyon
+
+    // Yiv (rifling) kararlılığından kaynaklanan yanal sürüklenme (spin
+    // drift). Gerçek gyroskopik "yaw of repose" fiziği (McCoy'un ampirik
+    // formülleri) modellenmez — bunun yerine ateş yönüne dik "sağ" eksende
+    // sabit bir yanal ivme uygulanır (sağ-el yiv varsayımıyla tutarlı:
+    // mermi sağa kayar). Deterministik, RNG yok. 0 = devre dışı (varsayılan,
+    // geriye uyumlu).
+    float spinDriftAccel = 0.0f; // m/s^2
 };
 
 enum class ImpactType : uint8_t {

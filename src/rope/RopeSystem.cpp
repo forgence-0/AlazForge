@@ -81,6 +81,7 @@ void RopeSystem::Create(JPH::PhysicsSystem& inPhysics, const Vec3& startPos, con
                                                       segments[static_cast<size_t>(i + 1)], joint);
         if (c) constraints.push_back(c);
     }
+    segmentJointCount = constraints.size();
 }
 
 void RopeSystem::AttachStartTo(JPH::BodyID body, const Vec3& worldAnchor) {
@@ -95,6 +96,32 @@ void RopeSystem::AttachTo(JPH::BodyID segment, JPH::BodyID target, const Vec3& w
     if (!physics) return;
     JPH::Ref<JPH::Constraint> c = CreateBallJoint(*physics, target, segment, ToJoltR(worldAnchor));
     if (c) constraints.push_back(c);
+}
+
+void RopeSystem::Update(float dt, std::vector<int>* outBrokenJoints) {
+    if (!physics || config.maxTensionN <= 0.0f || dt <= 0.0f) return;
+
+    for (size_t i = 0; i < segmentJointCount; ++i) {
+        JPH::Ref<JPH::Constraint>& c = constraints[i];
+        if (!c) continue;
+        auto* point = static_cast<JPH::PointConstraint*>(c.GetPtr());
+        const float force = point->GetTotalLambdaPosition().Length() / dt;
+        if (force > config.maxTensionN) {
+            physics->RemoveConstraint(c);
+            c = nullptr;
+            if (outBrokenJoints) outBrokenJoints->push_back(static_cast<int>(i));
+        }
+    }
+}
+
+bool RopeSystem::IsJointBroken(int jointIndex) const {
+    if (jointIndex < 0 || static_cast<size_t>(jointIndex) >= segmentJointCount) return true;
+    return !constraints[static_cast<size_t>(jointIndex)];
+}
+
+JPH::BodyID RopeSystem::GetSegmentBodyID(int index) const {
+    if (index < 0 || static_cast<size_t>(index) >= segments.size()) return JPH::BodyID();
+    return segments[static_cast<size_t>(index)];
 }
 
 Transform RopeSystem::GetSegmentTransform(int index) const {
@@ -116,8 +143,9 @@ void RopeSystem::Destroy() {
     }
     JPH::BodyInterface& bi = physics->GetBodyInterface();
     for (JPH::Ref<JPH::Constraint>& c : constraints)
-        physics->RemoveConstraint(c);
+        if (c) physics->RemoveConstraint(c);
     constraints.clear();
+    segmentJointCount = 0;
     for (JPH::BodyID id : segments) {
         if (id.IsInvalid()) continue;
         bi.RemoveBody(id);

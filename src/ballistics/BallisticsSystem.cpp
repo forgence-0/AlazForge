@@ -26,12 +26,19 @@ BulletSimResult BallisticsSystem::Fire(const BulletParams& bullet, const Vec3& o
     JPH::RVec3 pos = ToJoltR(origin);
     JPH::Vec3 vel = dir * bullet.muzzleVelocity;
 
+    // Spin drift ekseni: ateş yönüne ve dünya yukarısına dik "sağ" -- ilk
+    // yönden bir kez hesaplanır (mermi döndükçe değişmez, gerçek yiv
+    // ekseni gibi namluya sabit).
+    JPH::Vec3 driftRight = dir.Cross(JPH::Vec3(0, 1, 0));
+    driftRight = driftRight.Length() > 1.0e-4f ? driftRight.Normalized() : JPH::Vec3(1, 0, 0);
+
     float t = 0.0f;
     const float dt = config.timeStep;
 
     while (t < maxFlightTime) {
         // Yerçekimi düşüşü + kuadratik hava direnci
         vel += JPH::Vec3(0, -config.gravity, 0) * dt;
+        if (bullet.spinDriftAccel != 0.0f) vel += driftRight * bullet.spinDriftAccel * dt;
         const float speed = vel.Length();
         if (speed < config.minSpeed) {
             result.stopped = true;

@@ -22,6 +22,11 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      # Bilgilendirici performans olcumu: 1000+ govdeli sahnenin adim
+      # suresi loga yazilir (basarisizlik uretmez, regresyon takibi icin).
+      - name: Benchmark
+        run: ./build/tests/alazforge_bench
+
       # Testler basarisiz olsa bile calisir (if: always()) -- derlenen
       # kutuphaneleri (.so; Windows'ta ayni adim .dll/.lib uretir) indirip
       # incelemek/manuel test etmek isteyenler icin. Varsayilan olarak
@@ -47,6 +52,28 @@ jobs:
             build/compile_commands.json
             build/generated_include
 
+  # MSVC'ye ozgu derleme hatalari main'e sizmasin diye her push'ta
+  # Windows'ta da derle+test et (release workflow'u yalnizca tag/dispatch
+  # aninda calisiyor, aradaki commit'leri yakalamaz).
+  build-and-test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: cmake -B build
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        shell: bash
+        run: |
+          export PATH="$PWD/build/Release:$PWD/build/external/JoltPhysics/Build/Release:$PATH"
+          ctest --test-dir build -C Release --output-on-failure
+
   format-check:
     runs-on: ubuntu-latest
     steps:
@@ -59,6 +86,24 @@ jobs:
         run: |
           find src tests \( -name '*.h' -o -name '*.cpp' \) \
             | xargs clang-format-18 --dry-run --Werror
+
+  # API referansi: Doxygen ciktisi artifact olarak yuklenir (repo private
+  # oldugu icin GitHub Pages yerine artifact -- indirilip yerelde acilir).
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+
+      - name: Generate docs
+        run: doxygen Doxyfile
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: api-docs
+          path: build/docs/html
 
   tidy-check:
     runs-on: ubuntu-latest

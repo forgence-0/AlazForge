@@ -1,0 +1,25 @@
+# AlazForge API dokumantasyonu -- CI'daki "docs" job'u bu dosyayla
+# `doxygen Doxyfile` calistirir ve build/docs/html'i artifact olarak yukler.
+# Yerel kullanim: doxygen Doxyfile && xdg-open build/docs/html/index.html
+
+PROJECT_NAME           = "AlazForge"
+PROJECT_BRIEF          = "AlazEngine icin Jolt tabanli fizik motoru katmani"
+OUTPUT_DIRECTORY       = build/docs
+OUTPUT_LANGUAGE        = Turkish
+
+INPUT                  = src README.md
+USE_MDFILE_AS_MAINPAGE = README.md
+FILE_PATTERNS          = *.h *.md
+RECURSIVE              = YES
+
+# Kod tabani Doxygen etiketiyle yazilmadi; normal // yorumlarini da
+# dokumantasyon olarak al (EXTRACT_ALL) -- her public sinif gorunsun.
+EXTRACT_ALL            = YES
+WARN_IF_UNDOCUMENTED   = NO
+QUIET                  = YES
+
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+
+# Cagri/dahil etme grafikleri icin graphviz (CI'da kurulu)
+HAVE_DOT               = YES

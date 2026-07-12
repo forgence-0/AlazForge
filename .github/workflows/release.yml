@@ -1,9 +1,10 @@
 name: Release
 
 # v* tag'i push edildiginde VEYA Actions sekmesinden elle tetiklendiginde
-# (workflow_dispatch, tag adi girilerek) calisir: projeyi derler, testleri
-# kosar ve derlenen kutuphaneleri (.so) kalici bir GitHub Release'e ekler.
-# CI'daki artifact'lerin aksine Release dosyalari 90 gunde silinmez.
+# (workflow_dispatch, tag adi girilerek) calisir: projeyi hem Linux'ta
+# (.so) hem Windows'ta (.dll + import .lib) derler, testleri kosar ve tum
+# kutuphaneleri kalici bir GitHub Release'e ekler. CI'daki artifact'lerin
+# aksine Release dosyalari 90 gunde silinmez.
 #
 # Yeni surum cikarmak icin iki yol:
 #   1) git tag v0.2.0 && git push origin v0.2.0
@@ -21,10 +22,10 @@ on:
         type: string
 
 permissions:
-  contents: write # gh release create icin gerekli
+  contents: write # gh release create/upload icin gerekli
 
 jobs:
-  release:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -48,13 +49,83 @@ jobs:
           cp build/external/JoltPhysics/Build/*.so release-libs/ 2>/dev/null || true
           ls -la release-libs/
 
-      - name: Create GitHub Release
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-libs
+          path: release-libs/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      # Visual Studio generator multi-config: -DCMAKE_BUILD_TYPE yerine
+      # build/ctest adimlarinda --config / -C Release kullanilir.
+      - name: Configure
+        run: cmake -B build
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      # Windows'ta test exe'leri DLL'leri PATH uzerinden bulur; DLL
+      # dizinlerini PATH'e ekleyerek kosuyoruz.
+      - name: Test
+        shell: bash
+        run: |
+          export PATH="$PWD/build/Release:$PWD/build/external/JoltPhysics/Build/Release:$PATH"
+          ctest --test-dir build -C Release --output-on-failure
+
+      # VS generator ciktilari config alt dizinine koyar: ana hedefler
+      # build/Release/, Jolt build/external/JoltPhysics/Build/Release/.
+      # Hem .dll hem import .lib toplanir (AlazEngine derleme zamaninda
+      # .lib'e, calisma zamaninda .dll'e ihtiyac duyar).
+      - name: Collect libraries
+        shell: bash
+        run: |
+          mkdir -p release-libs
+          cp build/Release/*.dll build/Release/*.lib release-libs/
+          cp build/external/JoltPhysics/Build/Release/*.dll release-libs/ 2>/dev/null || true
+          cp build/external/JoltPhysics/Build/Release/*.lib release-libs/ 2>/dev/null || true
+          ls -la release-libs/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-libs
+          path: release-libs/
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7 # gh, repo baglami icin checkout ister
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: linux-libs
+          path: release-libs
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-libs
+          path: release-libs
+
+      # Release zaten varsa (orn. dll+lib sonradan eklenirken) dosyalari
+      # mevcut release'e yukler (--clobber ayni adli dosyanin ustune
+      # yazar); yoksa yeni release olusturur.
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           # tag push'unda ref_name tag'in kendisi; elle tetiklemede input'tan
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          gh release create "$TAG" release-libs/*.so \
-            --title "AlazForge $TAG" \
-            --target "$GITHUB_SHA" \
-            --generate-notes
+          ls -la release-libs/
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" release-libs/* --clobber
+          else
+            gh release create "$TAG" release-libs/* \
+              --title "AlazForge $TAG" \
+              --target "$GITHUB_SHA" \
+              --generate-notes
+          fi

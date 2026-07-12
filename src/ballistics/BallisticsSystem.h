@@ -65,7 +65,18 @@ public:
         float minSpeed = 30.0f;               // bu hızın altında mermi etkisiz sayılır
         float maxThicknessProbe = 2.0f;       // m, kalınlık ölçüm sondası menzili
         float ricochetSpeedRetention = 0.55f; // sekmede korunan hız oranı
+
+        // Atmosfer: sürükleme HAVAYA göre bağıl hıza uygulanır — yan rüzgar
+        // mermiyi rüzgar yönüne sürükler (uzun menzilde nişan düzeltmesi
+        // gerektirir). airDensityFactor deniz seviyesi=1; irtifada <1
+        // (daha az sürükleme), yoğun atmosferde >1. WindSystem::GetWindAt
+        // sonucu her atıştan önce buraya yazılabilir.
+        Vec3 wind{0, 0, 0};            // m/s, dünya uzayı
+        float airDensityFactor = 1.0f; // dragFactor çarpanı
     };
+
+    // Atış sırasında atmosferi güncellemek için (örn. WindSystem'den)
+    void SetWind(const Vec3& inWind) { config.wind = inWind; }
 
     // NOT: Config, BallisticsSystem'e iç içe (nested) tanımlı; bu yüzden
     // Config{}'i BURADA (sınıf gövdesi içinde) varsayılan argüman değeri

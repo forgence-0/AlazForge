@@ -25,18 +25,33 @@
 
 namespace alazforge {
 
+// Şiddetin mesafeyle azalma modeli
+enum class ExplosionFalloff : uint8_t {
+    Linear,       // 1 - d/R (oyun dengesi için basit model)
+    InverseSquare // (1 - d/R)^2 — blast basıncının hızlı düşüşüne yakın,
+                  // kenarda çok zayıf, merkezde yoğun (gerçekçi his)
+};
+
 struct ExplosionConfig {
     float radius = 10.0f;          // etki yarıçapı (m)
     float baseImpulseNs = 5000.0f; // merkezdeki impulse büyüklüğü (N*s)
     float upwardBias = 0.3f;       // impulse yönüne eklenen yukarı bileşen
                                    // (0=saf radyal; sinema patlaması hissi için >0)
+    ExplosionFalloff falloff = ExplosionFalloff::InverseSquare;
+
+    // Görüş hattı (siper) kontrolü: merkezden gövdeye raycast atılır; arada
+    // BAŞKA bir gövde varsa hedef siperdedir — impulse/hasar almaz (duvarın
+    // arkasına saklanmak gerçekten korur). Kapatılırsa eski davranış
+    // (duvarlardan geçen patlama) elde edilir.
+    bool losOcclusion = true;
 };
 
 struct ExplosionHit {
     JPH::BodyID body;
-    float distance; // patlama merkezine uzaklık (m)
-    float falloff;  // 1 (merkez) .. 0 (yarıçap kenarı) — hasar hesabına girdi
-    Vec3 impulse;   // uygulanan impulse (N*s)
+    float distance;        // patlama merkezine uzaklık (m)
+    float falloff;         // 1 (merkez) .. 0 (yarıçap kenarı) — hasar hesabına girdi
+    Vec3 impulse;          // uygulanan impulse (N*s)
+    bool occluded = false; // siperdeydi: impulse uygulanmadı, falloff=0
 };
 
 class WEAPONS_API ExplosionSystem {

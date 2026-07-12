@@ -37,7 +37,10 @@ BulletSimResult BallisticsSystem::Fire(const BulletParams& bullet, const Vec3& o
             result.stopped = true;
             break;
         }
-        vel -= vel * (bullet.dragFactor * speed * dt);
+        // Surukleme mermi hizina degil HAVAYA gore bagil hiza etki eder:
+        // yan ruzgar mermiyi surukler, arka ruzgar menzili uzatir.
+        const JPH::Vec3 airRelVel = vel - ToJolt(config.wind);
+        vel -= airRelVel * (bullet.dragFactor * config.airDensityFactor * airRelVel.Length() * dt);
 
         // Bu adımın hareket segmentini tara
         const JPH::Vec3 segment = vel * dt;

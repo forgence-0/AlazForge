@@ -43,6 +43,7 @@ add_library(physics SHARED
     src/vehicle/WreckPersistence.cpp
     src/vehicle/VehicleSystem.cpp
     src/ballistics/BallisticsSystem.cpp
+    src/wind/WindSystem.cpp
 )
 
 target_include_directories(physics PUBLIC

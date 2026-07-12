@@ -4,7 +4,7 @@
 
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Constraints/SwingTwistConstraint.h>
-#include <Jolt/Physics/SkeletalAnimation/Skeleton.h>
+#include <Jolt/Skeleton/Skeleton.h>
 
 namespace alazforge {
 

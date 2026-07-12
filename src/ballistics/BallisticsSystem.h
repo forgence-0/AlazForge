@@ -67,12 +67,17 @@ public:
         float ricochetSpeedRetention = 0.55f; // sekmede korunan hız oranı
     };
 
-    // NOT: varsayilan argumanda '{}' yerine 'Config{}' kullanildi -- sinifa
-    // PHYSICS_API (visibility) attribute'u eklenince GCC 13, ic ice tanimli
-    // Config tipini '{}' ile eslerken tip donusum hatasi veriyordu.
+    // NOT: Config, BallisticsSystem'e iç içe (nested) tanımlı; bu yüzden
+    // Config{}'i BURADA (sınıf gövdesi içinde) varsayılan argüman değeri
+    // olarak kullanamayız -- GCC (ve standart), iç içe tipin varsayılan üye
+    // ilklendiricilerinin ancak SARAN sınıf tamamlandıktan sonra kullanılabilir
+    // olduğunu şart koşuyor (döngüsel bağımlılık: BallisticsSystem, kendi
+    // içindeki bir varsayılan argüman için henüz tamamlanmamış Config'e
+    // ihtiyaç duyar). İki-constructor'a bölüp varsayılanı .cpp'de (çeviri
+    // birimi kapsamında, her iki tip de tam tanımlıyken) çözüyoruz.
+    BallisticsSystem(JPH::PhysicsSystem& inPhysics, const MaterialDatabase& inMaterials);
     BallisticsSystem(JPH::PhysicsSystem& inPhysics, const MaterialDatabase& inMaterials,
-                     const Config& inConfig = Config{})
-        : physics(inPhysics), materials(inMaterials), config(inConfig) {}
+                     const Config& inConfig);
 
     // Mermiyi ateşler ve tüm uçuşu simüle eder.
     BulletSimResult Fire(const BulletParams& bullet, const Vec3& origin, const Vec3& direction,

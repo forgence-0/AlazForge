@@ -2,10 +2,14 @@
 // Testler için ortak Jolt dünyası kurulumu: katman tanımları, sistem
 // başlatma ve statik kutu oluşturma yardımcıları.
 
+// Jolt/Jolt.h, diger tum Jolt header'larindan ONCE include edilmeli (Jolt'un
+// kendi kurali) -- clang-format'in SortIncludes'i bunu bir alt blokla ayirmadan
+// alfabetik olarak geriye itmesin diye kendi bloğunda tutuluyor.
+#include <Jolt/Jolt.h>
+
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
-#include <Jolt/Jolt.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>

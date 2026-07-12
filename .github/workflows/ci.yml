@@ -97,8 +97,13 @@ jobs:
       - name: Install doxygen
         run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
 
+      # Doxygen ic ice cikti dizinini kendisi olusturamiyor ("Output
+      # directory 'build/docs' does not exist and cannot be created" --
+      # gercek CI'da yakalandi); once dizini biz aciyoruz.
       - name: Generate docs
-        run: doxygen Doxyfile
+        run: |
+          mkdir -p build/docs
+          doxygen Doxyfile
 
       - uses: actions/upload-artifact@v7
         with:

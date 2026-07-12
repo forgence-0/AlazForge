@@ -23,20 +23,22 @@ int g_joltInitRefCount = 0;
 
 class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface {
 public:
-    BPLayerInterfaceImpl(JPH::ObjectLayer nonMoving, JPH::ObjectLayer moving) {
-        objectToBroadPhase[nonMoving] = JPH::BroadPhaseLayer(0);
-        objectToBroadPhase[moving] = JPH::BroadPhaseLayer(1);
-    }
+    explicit BPLayerInterfaceImpl(JPH::ObjectLayer nonMoving) : nonMovingLayer(nonMoving) {}
     JPH::uint GetNumBroadPhaseLayers() const override { return 2; }
+    // NOT: sabit boyutlu bir diziyi ObjectLayer degeriyle indekslemek yerine
+    // karsilastirma kullanilir -- Config::movingLayer/nonMovingLayer'i 0/1
+    // disinda bir deger (orn. AlazEngine'in kendi katman numaralandirmasi
+    // 2/3 kullaniyorsa) verince eski dizi-indeksli hali sinir disi yazardi
+    // (gercek review'da yakalandi).
     JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer inLayer) const override {
-        return objectToBroadPhase[inLayer];
+        return inLayer == nonMovingLayer ? JPH::BroadPhaseLayer(0) : JPH::BroadPhaseLayer(1);
     }
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
     const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer) const override { return "?"; }
 #endif
 
 private:
-    JPH::BroadPhaseLayer objectToBroadPhase[2];
+    JPH::ObjectLayer nonMovingLayer;
 };
 
 class ObjectVsBroadPhaseLayerFilterImpl final : public JPH::ObjectVsBroadPhaseLayerFilter {
@@ -83,8 +85,7 @@ AlazForgeContext::AlazForgeContext(const Config& inConfig) : config(inConfig) {
     jobSystem = std::make_unique<JPH::JobSystemThreadPool>(JPH::cMaxPhysicsJobs,
                                                            JPH::cMaxPhysicsBarriers, numThreads);
 
-    bpLayerInterface =
-        std::make_unique<BPLayerInterfaceImpl>(config.nonMovingLayer, config.movingLayer);
+    bpLayerInterface = std::make_unique<BPLayerInterfaceImpl>(config.nonMovingLayer);
     objectVsBroadPhaseFilter = std::make_unique<ObjectVsBroadPhaseLayerFilterImpl>(
         config.nonMovingLayer, config.movingLayer);
     objectLayerPairFilter =

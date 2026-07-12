@@ -13,6 +13,9 @@ namespace alazforge {
 namespace {
 
 float ComputeFalloff(ExplosionFalloff model, float distance, float radius) {
+    // radius<=0: distance/radius NaN olurdu -- pratikte CollideSphere bu
+    // yaricapta govde donmez, ama savunmaci olarak sifir doner.
+    if (radius <= 0.0f) return 0.0f;
     const float linear = 1.0f - distance / radius;
     switch (model) {
         case ExplosionFalloff::InverseSquare:

@@ -106,6 +106,21 @@ int main() {
     }
     std::filesystem::remove_all(saveDir);
 
+    printf("[Sifir yaricap]\n");
+    {
+        TerrainDeformSystem deform(cfg);
+        deform.OnPlayerMove(700.0f, 700.0f);
+
+        // radius=0: falloff hesabi 0/0 olurdu -- tek noktaya dogrudan
+        // uygulanmali, NaN yayilmamali.
+        deform.ApplyDeformationRadius(700.0f, 700.0f, 0.3f, 0.0f);
+        const float depth = deform.GetDepthAt(700.0f, 700.0f);
+        CHECK(depth > 0.25f && depth < 0.35f,
+              "sifir yaricapta tek nokta dogru cokme aldi (NaN degil)");
+        CHECK(deform.GetDepthAt(701.0f, 700.0f) == 0.0f, "sifir yaricapta komsu hucre etkilenmedi");
+    }
+    std::filesystem::remove_all(saveDir);
+
     printf("[Kalicilik]\n");
     {
         {

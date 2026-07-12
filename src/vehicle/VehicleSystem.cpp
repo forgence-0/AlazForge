@@ -46,6 +46,9 @@ void VehicleSystem::CreateWheeled(JPH::PhysicsSystem& inPhysics,
                                   const VehicleChassisConfig& chassis,
                                   const std::vector<AxleConfig>& axles, const EngineConfig& engine,
                                   const TransmissionConfig& trans, JPH::ObjectLayer testerLayer) {
+    // En az bir aks gerekli; bos liste sessizce reddedilir -- bodyId
+    // gecersiz, Kind() None kalir, cagiran bunu kontrol edebilir.
+    if (axles.empty()) return;
     Destroy();
     physics = &inPhysics;
     kind = VehicleKind::Wheeled;
@@ -90,6 +93,9 @@ void VehicleSystem::CreateTracked(JPH::PhysicsSystem& inPhysics,
                                   const VehicleChassisConfig& chassis,
                                   const std::vector<AxleConfig>& axles, const EngineConfig& engine,
                                   const TransmissionConfig& trans, JPH::ObjectLayer testerLayer) {
+    // En az bir aks gerekli; bos liste sessizce reddedilir -- bodyId
+    // gecersiz, Kind() None kalir, cagiran bunu kontrol edebilir.
+    if (axles.empty()) return;
     Destroy();
     physics = &inPhysics;
     kind = VehicleKind::Tracked;

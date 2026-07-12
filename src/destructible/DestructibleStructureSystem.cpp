@@ -53,6 +53,28 @@ uint64_t DestructibleStructureSystem::RegisterStructure(JPH::PhysicsSystem& inPh
                                    structureConfig.worldOrigin.y + pc.localCenter.y,
                                    structureConfig.worldOrigin.z + pc.localCenter.z};
 
+        // Kalicilik geri-yukleme: BreakPiece bu parca daha once kirildiginda
+        // ilgili chunk'a bir PieceDamageRecord yazmisti (bkz. asagida).
+        // GetChunkAt, chunk henuz bellekte degilse diskten otomatik yukler --
+        // onceki oturumdan kirik kalmis bir parca varsa govde HIC
+        // olusturulmadan kirik olarak baslatilir (onceden govde
+        // olusturup hemen yikmak yerine).
+        DestructibleChunkData& chunk = stream.GetChunkAt(worldPos.x, worldPos.z);
+        bool alreadyBroken = false;
+        for (const PieceDamageRecord& rec : chunk.records) {
+            if (rec.structureId == structureConfig.structureId &&
+                rec.pieceIndex == static_cast<uint16_t>(i) && rec.broken) {
+                alreadyBroken = true;
+                break;
+            }
+        }
+
+        if (alreadyBroken) {
+            pr.broken = true;
+            pr.health = 0.0f;
+            continue; // govde yok, bodyIndexToPiece'e eklenecek bir sey yok
+        }
+
         JPH::BoxShapeSettings shapeSettings(ToJolt(pc.halfExtents));
         shapeSettings.SetEmbedded();
         JPH::BodyCreationSettings bodySettings(shapeSettings.Create().Get(), ToJoltR(worldPos),
@@ -162,7 +184,9 @@ void DestructibleStructureSystem::ApplyDamageRadius(uint64_t structureId, const 
         const float dz = piecePos.z - worldPoint.z;
         const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
         if (dist > radius) continue;
-        const float falloff = 1.0f - dist / radius;
+        // radius<=0: dist/radius NaN olurdu -- yalnizca dist<=0 (fiili
+        // tam-isabet) buraya kadar gelebilir, tam hasar uygulanir.
+        const float falloff = radius > 0.0f ? (1.0f - dist / radius) : 1.0f;
         ApplyDamageToPiece(structureId, s, i, damage * falloff, outEvents);
     }
 }

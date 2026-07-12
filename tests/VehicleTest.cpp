@@ -176,6 +176,20 @@ int main() {
         CHECK(headingDelta > 0.1f, "diferansiyel donus paletli yonunu degistirdi");
     }
 
+    // ── Bos aks listesi: cokmemeli, sessizce reddedilmeli ────────────────
+    printf("[Bos aks listesi]\n");
+    {
+        VehicleSystem empty1;
+        empty1.CreateWheeled(world.physics, chassis, {}, engine, trans, movingLayer);
+        CHECK(empty1.Kind() == VehicleKind::None,
+              "bos aksla tekerlekli olusturma sessizce reddedildi");
+
+        VehicleSystem empty2;
+        empty2.CreateTracked(world.physics, chassis, {}, engine, trans, movingLayer);
+        CHECK(empty2.Kind() == VehicleKind::None,
+              "bos aksla paletli olusturma sessizce reddedildi");
+    }
+
     if (g_failCount == 0) {
         printf("TEST BASARILI: arac fizigi (tekerlekli + paletli) dogru calisiyor.\n");
         return 0;

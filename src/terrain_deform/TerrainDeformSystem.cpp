@@ -41,6 +41,13 @@ void TerrainDeformSystem::ApplyDeformation(float worldX, float worldZ, float dep
 
 void TerrainDeformSystem::ApplyDeformationRadius(float worldX, float worldZ, float depth,
                                                  float radius) {
+    // radius<=0: falloff hesabi 0'a bolerdi (NaN) -- tek noktaya dogrudan
+    // uygula (sezgisel karsiligi: "yaricapsiz" darbe yalnizca vurulan
+    // hucreyi etkiler).
+    if (radius <= 0.0f) {
+        ApplyDeformation(worldX, worldZ, depth);
+        return;
+    }
     const float cs = config.cellSize;
     const float minX = worldX - radius, maxX = worldX + radius;
     const float minZ = worldZ - radius, maxZ = worldZ + radius;

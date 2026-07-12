@@ -7,6 +7,7 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/PhysicsSettings.h>
+#include <Jolt/Physics/StateRecorderImpl.h>
 #include <Jolt/RegisterTypes.h>
 
 #include <algorithm>
@@ -145,6 +146,22 @@ size_t AlazForgeContext::SnapshotActiveBodies(std::vector<BodySnapshot>& out) co
         out.push_back(snap);
     }
     return out.size();
+}
+
+size_t AlazForgeContext::SaveWorldState(std::vector<uint8_t>& out) const {
+    JPH::StateRecorderImpl recorder;
+    physics->SaveState(recorder);
+    const std::string data = recorder.GetData();
+    out.assign(data.begin(), data.end());
+    return out.size();
+}
+
+bool AlazForgeContext::RestoreWorldState(const std::vector<uint8_t>& data) {
+    if (data.empty()) return false;
+    JPH::StateRecorderImpl recorder;
+    recorder.WriteBytes(data.data(), data.size());
+    recorder.Rewind();
+    return physics->RestoreState(recorder);
 }
 
 } // namespace alazforge

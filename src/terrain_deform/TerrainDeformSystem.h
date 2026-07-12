@@ -10,8 +10,13 @@
 
 #include <physics/export.h>
 
+#include <Jolt/Jolt.h>
+
+#include <Jolt/Physics/PhysicsSystem.h>
+
 #include <algorithm>
 #include <cstring>
+#include <unordered_map>
 
 namespace alazforge {
 
@@ -95,11 +100,27 @@ public:
     ChunkStreamSystem<DeformationChunkData>& Stream();
     const ChunkGrid& Grid() const;
 
+    // ── Gerçek çarpışma gövdesi (JPH::HeightFieldShape) ────────────────
+    // (worldX, worldZ)'nin içinde bulunduğu chunk için, deformasyon verisini
+    // (baseHeightY - çökme) yükseklik alanına çevirip statik bir çarpışma
+    // gövdesi oluşturur/günceller. ApplyDeformation* çağrılarından sonra
+    // çağrılırsa krater gerçekten çarpışılabilir olur (araç çukura düşer).
+    // Var olan chunk gövdesi önce kaldırılıp yenisiyle değiştirilir.
+    JPH::BodyID UpdateChunkCollision(JPH::PhysicsSystem& physics, float worldX, float worldZ,
+                                     float baseHeightY, JPH::ObjectLayer layer);
+
+    // Bu sistemin oluşturduğu TÜM chunk çarpışma gövdelerini dünyadan
+    // kaldırır. PhysicsSystem yok edilmeden ÖNCE çağrılmalıdır (sistem,
+    // PhysicsSystem'in ömrünü sahiplenmez).
+    void DestroyAllChunkCollision(JPH::PhysicsSystem& physics);
+
 private:
     Config config;
     int cellsPerSide;
     ChunkGrid grid;
     ChunkStreamSystem<DeformationChunkData> stream;
+    // chunk anahtarı (cx<<32|cz) -> o chunk'ın statik heightfield gövdesi
+    std::unordered_map<uint64_t, JPH::BodyID> chunkBodies;
 
     // Dünya koordinatını chunk içi hücre indeksine çevirir
     uint32_t CellIndex(float worldX, float worldZ) const;

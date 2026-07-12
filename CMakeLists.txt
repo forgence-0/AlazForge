@@ -94,8 +94,17 @@ function(alazforge_add_helper_library name export_macro)
     target_link_libraries(${name} PUBLIC physics)
 endfunction()
 
-# weapons.dll — geri tepme, sekme/dağılım, türet mount
-alazforge_add_helper_library(weapons WEAPONS_API src/weapons/TurretMount.cpp)
+# weapons.dll — geri tepme, sekme/dağılım, türet mount, patlama
+alazforge_add_helper_library(weapons WEAPONS_API
+    src/weapons/TurretMount.cpp
+    src/weapons/ExplosionSystem.cpp
+)
+
+# character.dll — CharacterVirtual tabanlı oyuncu/NPC kontrolcüsü
+alazforge_add_helper_library(character CHARACTER_API src/character/CharacterController.cpp)
+
+# rope.dll — segment zinciri tabanlı halat/kablo fiziği
+alazforge_add_helper_library(rope ROPE_API src/rope/RopeSystem.cpp)
 
 # buoyancy.dll — su hacimleri, yüzerlik
 alazforge_add_helper_library(buoyancy BUOYANCY_API src/buoyancy/BuoyancySystem.cpp)
@@ -114,6 +123,19 @@ alazforge_add_helper_library(ragdoll RAGDOLL_API
 
 # context.dll — AlazForgeContext (ECS bridge facade'ı)
 alazforge_add_helper_library(context CONTEXT_API src/context/AlazForgeContext.cpp)
+
+# debugdraw.dll — Jolt DebugRenderer -> AlazEngine çizim callback köprüsü
+alazforge_add_helper_library(debugdraw DEBUGDRAW_API src/debugdraw/DebugDrawBridge.cpp)
+# Jolt varsayılan olarak RTTI'siz derlenir (CPP_RTTI_ENABLED OFF), bu yüzden
+# jolt.dll typeinfo sembolleri içermez. DebugRendererSimple'dan türediğimiz
+# için debugdraw da RTTI'siz derlenmeli — aksi halde türetilmiş sınıfın
+# typeinfo'su base'inkine referans verir ve "undefined reference to typeinfo
+# for JPH::DebugRendererSimple" link hatası oluşur (gerçek derlemede yakalandı).
+if(MSVC)
+    target_compile_options(debugdraw PRIVATE /GR-)
+else()
+    target_compile_options(debugdraw PRIVATE -fno-rtti)
+endif()
 
 # sportsball.dll — topla oynanan sporlar icin genel top fizigi (surukleme +
 # Magnus/spin etkisi); futbol/basketbol/hentbol/amerikan futbolu gibi

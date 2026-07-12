@@ -80,6 +80,16 @@ public:
     // değil, yalnızca hareket edeni senkronize etsin diye.
     size_t SnapshotActiveBodies(std::vector<BodySnapshot>& out) const;
 
+    // ── Dünya durumu kaydet/yükle (oyun save/load sistemi için) ────────
+    // Tüm fizik dünyasının (gövde pozisyon/hız/uyku durumları, contact
+    // önbelleği) binary snapshot'ı. RestoreWorldState AYNI gövde kümesine
+    // sahip bir dünyaya uygulanmalıdır (Jolt'un StateRecorder sözleşmesi:
+    // gövdeleri geri EKLEMEZ, mevcut gövdelerin durumunu geri yükler) —
+    // yani önce sahneyi kur, sonra state'i yükle. Deterministik yeniden
+    // oynatma (replay) için de aynı mekanizma kullanılır.
+    size_t SaveWorldState(std::vector<uint8_t>& out) const;
+    bool RestoreWorldState(const std::vector<uint8_t>& data);
+
 private:
     Config config;
 

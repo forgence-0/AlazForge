@@ -68,6 +68,31 @@ target_link_libraries(alazforge_test_sportsball PRIVATE sportsball)
 
 add_test(NAME sportsball COMMAND alazforge_test_sportsball)
 
+add_executable(alazforge_test_character CharacterControllerTest.cpp)
+target_link_libraries(alazforge_test_character PRIVATE character)
+
+add_test(NAME character_controller COMMAND alazforge_test_character)
+
+add_executable(alazforge_test_explosion ExplosionSystemTest.cpp)
+target_link_libraries(alazforge_test_explosion PRIVATE weapons)
+
+add_test(NAME explosion COMMAND alazforge_test_explosion)
+
+add_executable(alazforge_test_rope RopeSystemTest.cpp)
+target_link_libraries(alazforge_test_rope PRIVATE rope buoyancy)
+
+add_test(NAME rope COMMAND alazforge_test_rope)
+
+add_executable(alazforge_test_world_state WorldStateTest.cpp)
+target_link_libraries(alazforge_test_world_state PRIVATE context)
+
+add_test(NAME world_state COMMAND alazforge_test_world_state)
+
+add_executable(alazforge_test_terrain_collision TerrainCollisionTest.cpp)
+target_link_libraries(alazforge_test_terrain_collision PRIVATE physics debugdraw)
+
+add_test(NAME terrain_collision COMMAND alazforge_test_terrain_collision)
+
 # Bilgilendirici benchmark -- ctest'e kayitli degil, CI ayri adimda kosar
 add_executable(alazforge_bench BenchmarkMain.cpp)
 target_link_libraries(alazforge_bench PRIVATE context)

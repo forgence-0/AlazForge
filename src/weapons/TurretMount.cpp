@@ -65,6 +65,11 @@ void TurretMount::AttachToBody(JPH::PhysicsSystem& inPhysics, JPH::BodyID parent
                                               JPH::EMotionType::Dynamic, layer);
     yawBodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     yawBodySettings.mMassPropertiesOverride.mMass = 200.0f;
+    // Gercek turet mount'lari mekanik olarak dengelenir (yercekimi torku
+    // sifir); burada da yercekimini kapatiyoruz -- aksi halde pitch
+    // govdesinin (asagida) pivot'tan one kaydirilmis kutle merkezi, motor
+    // komutundan bagimsiz olarak govdeyi asagi limite ceker.
+    yawBodySettings.mGravityFactor = 0.0f;
     yawBody = bi.CreateAndAddBody(yawBodySettings, JPH::EActivation::Activate);
 
     JPH::HingeConstraintSettings yawSettings;
@@ -104,6 +109,7 @@ void TurretMount::AttachToBody(JPH::PhysicsSystem& inPhysics, JPH::BodyID parent
                                                 parentRot, JPH::EMotionType::Dynamic, layer);
     pitchBodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
     pitchBodySettings.mMassPropertiesOverride.mMass = 50.0f;
+    pitchBodySettings.mGravityFactor = 0.0f;
     pitchBody = bi.CreateAndAddBody(pitchBodySettings, JPH::EActivation::Activate);
 
     JPH::HingeConstraintSettings pitchSettings;
@@ -141,13 +147,7 @@ void TurretMount::SetTargetAngles(float targetYawRad, float targetPitchRad) {
     const float pitchError = targetPitchRad - CurrentPitch();
 
     yawConstraint->SetTargetAngularVelocity(ClampedRate(yawError, yawMaxRate));
-    // NOT: pitch icin JPH::HingeConstraint::GetCurrentAngle()'in isaret yonu,
-    // mHingeAxis1 = +X etrafinda SetTargetAngularVelocity'nin fiziksel donus
-    // yonunun TERSI cikiyor (CI'da olculdu: pozitif hedef hiz -> negatif aci
-    // sonucu). Motor hedefini bu yuzden negatif isaretle veriyoruz; limitler
-    // (mLimitsMin/Max) ve GetCurrentAngle() zaten dogru/tutarli oldugu icin
-    // (limitin -10'unda kenetlendi) yalnizca motor yonunu ters ceviriyoruz.
-    pitchConstraint->SetTargetAngularVelocity(-ClampedRate(pitchError, pitchMaxRate));
+    pitchConstraint->SetTargetAngularVelocity(ClampedRate(pitchError, pitchMaxRate));
 
     JPH::BodyInterface& bi = physics->GetBodyInterface();
     bi.ActivateBody(yawBody);

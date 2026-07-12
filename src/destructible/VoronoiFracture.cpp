@@ -90,8 +90,22 @@ std::vector<Face> ClipPolytope(const std::vector<Face>& faces, JPH::Vec3 n, floa
             centroid += p;
         centroid /= static_cast<float>(capPoints.size());
 
-        // n'e dik iki baz vektor (kapak duzlemi icinde acisal siralama icin)
-        const JPH::Vec3 up = std::abs(n.GetY()) < 0.99f ? JPH::Vec3::sAxisY() : JPH::Vec3::sAxisX();
+        // n'e dik iki baz vektor (kapak duzlemi icinde acisal siralama icin).
+        // n'ye EN AZ hizali eksen secilir (0.99 esikli onceki yaklasim,
+        // n neredeyse esik degerine denk geldiginde cross product'in
+        // neredeyse sifir uzunlukta olmasina -- Normalized()'da NaN/Inf'e --
+        // izin verebiliyordu; bu Windows'ta Jolt'un kayan nokta istisna
+        // tuzagi tarafindan yakalanip gercek bir crash'e donustu).
+        // En az hizali eksen secilince cross product uzunlugu her zaman
+        // en az sin(54.7 derece) ~ 0.816 olur, sifira asla yaklasmaz.
+        const float ax = std::abs(n.GetX()), ay = std::abs(n.GetY()), az = std::abs(n.GetZ());
+        JPH::Vec3 up;
+        if (ax <= ay && ax <= az)
+            up = JPH::Vec3::sAxisX();
+        else if (ay <= ax && ay <= az)
+            up = JPH::Vec3::sAxisY();
+        else
+            up = JPH::Vec3::sAxisZ();
         const JPH::Vec3 tangent = up.Cross(n).Normalized();
         const JPH::Vec3 bitangent = n.Cross(tangent);
 
@@ -176,8 +190,31 @@ std::vector<JPH::BodyID> FractureVoronoi(JPH::PhysicsSystem& physics, JPH::Objec
         const JPH::Vec3 centroid = ToJolt(cell.centroid);
         std::vector<JPH::Vec3> localPoints;
         localPoints.reserve(cell.vertices.size());
-        for (const Vec3& v : cell.vertices)
-            localPoints.push_back(ToJolt(v) - centroid);
+        for (const Vec3& v : cell.vertices) {
+            const JPH::Vec3 p = ToJolt(v) - centroid;
+            // Cok yakin/cakisik noktalari birlestir -- Jolt'un convex hull
+            // olusturucusu neredeyse-dejenere nokta bulutlarinda kararsiz
+            // olabiliyor (Windows'ta gercek bir crash'e yol acti).
+            bool duplicate = false;
+            for (const JPH::Vec3& q : localPoints) {
+                if ((p - q).LengthSq() < 1.0e-8f) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) localPoints.push_back(p);
+        }
+        if (localPoints.size() < 4) continue;
+
+        // Dejenere (duzlemsel/cizgisel/nokta-benzeri) hucreleri atla:
+        // bounding box'in her ekseninde asgari bir genislik olmali.
+        JPH::Vec3 bmin = localPoints[0], bmax = localPoints[0];
+        for (const JPH::Vec3& p : localPoints) {
+            bmin = JPH::Vec3::sMin(bmin, p);
+            bmax = JPH::Vec3::sMax(bmax, p);
+        }
+        const JPH::Vec3 extent = bmax - bmin;
+        if (extent.GetX() < 1.0e-4f || extent.GetY() < 1.0e-4f || extent.GetZ() < 1.0e-4f) continue;
 
         JPH::ConvexHullShapeSettings shapeSettings(localPoints.data(),
                                                    static_cast<int>(localPoints.size()));

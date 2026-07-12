@@ -290,6 +290,22 @@ void VehicleSystem::ApplyAeroDrag(float dt, float airDensity) {
     bi.AddForce(bodyId, -vel.Normalized() * dragMag);
 }
 
+int VehicleSystem::WheelCount() const {
+    if (!constraint) return 0;
+    return static_cast<int>(constraint->GetWheels().size());
+}
+
+Transform VehicleSystem::GetWheelTransform(int wheelIndex, const Vec3& localForward,
+                                           const Vec3& localUp) const {
+    if (!constraint || wheelIndex < 0 || wheelIndex >= WheelCount()) return Transform{};
+    const JPH::RMat44 m = constraint->GetWheelWorldTransform(static_cast<JPH::uint>(wheelIndex),
+                                                             ToJolt(localForward), ToJolt(localUp));
+    Transform t;
+    t.position = FromJolt(m.GetTranslation());
+    t.rotation = FromJolt(m.GetQuaternion());
+    return t;
+}
+
 void VehicleSystem::Destroy() {
     if (!physics) return;
     if (constraint) {

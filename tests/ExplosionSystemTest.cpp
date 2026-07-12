@@ -39,7 +39,9 @@ int main() {
     world.AddGround();
 
     JPH::BodyID nearBox = AddDynamicBox(world, JPH::RVec3(2.0, 0.5, 0.0));
-    JPH::BodyID farBox = AddDynamicBox(world, JPH::RVec3(7.0, 0.5, 0.0));
+    // farBox farkli dogrultuda: nearBox ile ayni hizada olursa yeni siper
+    // (losOcclusion) kontrolu onu hakli olarak "siperde" sayar
+    JPH::BodyID farBox = AddDynamicBox(world, JPH::RVec3(0.0, 0.5, 7.0));
     JPH::BodyID outsideBox = AddDynamicBox(world, JPH::RVec3(25.0, 0.5, 0.0));
 
     printf("[ExplosionSystem]\n");

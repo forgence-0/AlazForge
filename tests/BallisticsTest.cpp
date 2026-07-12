@@ -28,7 +28,7 @@ int main() {
     const MaterialId steel = db.FindByName("steel");
     const MaterialId wood = db.FindByName("wood");
 
-    CHECK(db.Count() == 6, "varsayilan 6 malzeme kayitli");
+    CHECK(db.Count() == 8, "varsayilan 8 malzeme kayitli (ice/rubber dahil)");
     CHECK(steel != kInvalidMaterial && wood != kInvalidMaterial, "steel/wood bulundu");
     CHECK(db.FindByName("adamantium") == kInvalidMaterial, "olmayan malzeme kInvalidMaterial");
     CHECK(db.Get(steel).rhaEquivalentPerCm > db.Get(wood).rhaEquivalentPerCm,
@@ -36,7 +36,7 @@ int main() {
 
     const MaterialId custom =
         db.Register({"brick", SurfaceType::Custom, 1800.0f, 30.0f, 0.9f, 0.0f, 0.7f});
-    CHECK(db.FindByName("brick") == custom && db.Count() == 7,
+    CHECK(db.FindByName("brick") == custom && db.Count() == 9,
           "oyun tarafi yeni malzeme kaydedebiliyor");
 
     TestWorld world;

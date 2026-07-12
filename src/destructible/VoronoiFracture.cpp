@@ -206,15 +206,21 @@ std::vector<JPH::BodyID> FractureVoronoi(JPH::PhysicsSystem& physics, JPH::Objec
         }
         if (localPoints.size() < 4) continue;
 
-        // Dejenere (duzlemsel/cizgisel/nokta-benzeri) hucreleri atla:
-        // bounding box'in her ekseninde asgari bir genislik olmali.
+        // Dejenere (duzlemsel/cizgisel/ince-dilim) hucreleri atla: bounding
+        // box'in her ekseninde asgari bir genislik olmali. Esik kasitli
+        // olarak "hemen hemen sifir" degil, gercekci bir asgari boyut
+        // (1 cm) -- cok ince dilimler gecerli bir disbukey govde
+        // uretebilse de, kutle/atalet hesaplari neredeyse-tekil olabiliyor
+        // ve bu, fizik adimlanirken (JobSystemThreadPool'un is parcaciklari
+        // uzerinde etkin olan Jolt'un kayan nokta istisna tuzagi ile)
+        // Windows'ta gercek bir crash'e donusebiliyor.
         JPH::Vec3 bmin = localPoints[0], bmax = localPoints[0];
         for (const JPH::Vec3& p : localPoints) {
             bmin = JPH::Vec3::sMin(bmin, p);
             bmax = JPH::Vec3::sMax(bmax, p);
         }
         const JPH::Vec3 extent = bmax - bmin;
-        if (extent.GetX() < 1.0e-4f || extent.GetY() < 1.0e-4f || extent.GetZ() < 1.0e-4f) continue;
+        if (extent.GetX() < 0.1f || extent.GetY() < 0.1f || extent.GetZ() < 0.1f) continue;
 
         JPH::ConvexHullShapeSettings shapeSettings(localPoints.data(),
                                                    static_cast<int>(localPoints.size()));
@@ -222,6 +228,29 @@ std::vector<JPH::BodyID> FractureVoronoi(JPH::PhysicsSystem& physics, JPH::Objec
         shapeSettings.SetEmbedded();
         const JPH::ShapeSettings::ShapeResult shapeResult = shapeSettings.Create();
         if (shapeResult.HasError()) continue; // dejenere (duzlemsel/cok kucuk) hucre -- atla
+
+        // Kutle/atalet ozelliklerini govde olusturulmadan ONCE (ana is
+        // parcacigi uzerinde, Jolt'un istisna tuzagi devrede degilken)
+        // dogrula -- NaN/Inf uretebilecek neredeyse-tekil govdeler fizik
+        // adimlamasina hic girmeden elenir. Asal atalet momentlerine
+        // ayristirma (Jolt'un kendi yontemi) hem finiteness hem de
+        // "neredeyse tekil" (fizik cozucusu tersini alirken patlayabilecek
+        // sifira yakin ozdeger) durumunu tek seferde yakalar.
+        const JPH::MassProperties massProps = shapeResult.Get()->GetMassProperties();
+        if (!std::isfinite(massProps.mMass) || massProps.mMass <= 0.0f) continue;
+
+        JPH::Mat44 principalRotation;
+        JPH::Vec3 principalMoments;
+        if (!massProps.DecomposePrincipalMomentsOfInertia(principalRotation, principalMoments))
+            continue;
+        if (!std::isfinite(principalMoments.GetX()) || !std::isfinite(principalMoments.GetY()) ||
+            !std::isfinite(principalMoments.GetZ()))
+            continue;
+        constexpr float kMinPrincipalMoment = 1.0e-6f;
+        if (principalMoments.GetX() < kMinPrincipalMoment ||
+            principalMoments.GetY() < kMinPrincipalMoment ||
+            principalMoments.GetZ() < kMinPrincipalMoment)
+            continue;
 
         JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(centroid),
                                                JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic,

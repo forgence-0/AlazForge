@@ -31,8 +31,15 @@ public:
     void UntrackBody(JPH::BodyID body);
 
     // İzlenen her gövde için, içinde bulunduğu su hacmi varsa buoyancy
-    // impulse'unu uygular.
+    // impulse'unu uygular. dt ayrıca dahili dalga zamanını ilerletir
+    // (dalgalı hacimlerde yüzen cisimler iner-kalkar).
     void Update(JPH::PhysicsSystem& physics, float dt);
+
+    // (x,z)'deki anlık su yüzeyi yüksekliği — dalga varsa zamana bağlı,
+    // yoksa volume.surfaceY. Render tarafı su mesh'ini bununla bükebilir.
+    float SurfaceHeightAt(const WaterVolume& volume, float x, float z) const;
+
+    float WaveTime() const { return waveTime; }
 
     bool IsSubmerged(JPH::PhysicsSystem& physics, JPH::BodyID body) const;
 
@@ -57,6 +64,7 @@ private:
 
     std::vector<StoredVolume> volumes;
     std::vector<JPH::BodyID> trackedBodies;
+    float waveTime = 0.0f;
 
     const WaterVolume* FindVolumeContaining(const Vec3& worldPos) const;
 };

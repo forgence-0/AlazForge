@@ -1,5 +1,7 @@
 #pragma once
-// Su hacmi tanımı (Faz B.4). Basit eksene hizalı kutu bölge + düz su yüzeyi.
+// Su hacmi tanımı (Faz B.4). Eksene hizalı kutu bölge; yüzey düz olabilir
+// veya dalga parametreleriyle zamana bağlı iner-kalkar (yüzen cisimler
+// dalgada sallanır). Dalga tamamen deterministiktir (sinüs — RNG yok).
 
 #include "core/AlazMath.h"
 
@@ -16,6 +18,12 @@ struct WaterVolume {
     float linearDrag = 0.5f;
     float angularDrag = 0.5f;
     Vec3 flowVelocity{0, 0, 0};
+
+    // ── Dalga (0 genlik = düz yüzey, eski davranış) ────────────────────
+    float waveAmplitude = 0.0f;  // dalga yüksekliğinin yarısı (m)
+    float waveLength = 12.0f;    // tepe-tepe mesafe (m)
+    float waveSpeed = 1.5f;      // ilerleme hızı (m/s)
+    Vec3 waveDirection{1, 0, 0}; // ilerleme yönü (xz düzleminde)
 };
 
 } // namespace alazforge

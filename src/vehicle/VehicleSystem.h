@@ -44,7 +44,18 @@ struct AxleConfig {
     float maxHandBrakeTorque = 0.0f; // genelde arka aks
     float antiRollStiffness = 5000.0f;
     float trackLateralFriction = 1.0f; // yalnızca paletli: düşük = kolay dönüş
-    bool driven = true;                // motor torku bu aksa ulaşır mı
+
+    // Lastik tutunması (yalnızca tekerlekli): Jolt'un varsayılan kayma
+    // (slip) eğrileri bu çarpanlarla ölçeklenir. 1 = varsayılan tutuş;
+    // <1 = kaygan (ıslak/karlı zemin, drift arabası), >1 = yarış lastiği.
+    // Yanal (lateral) düşükken araç virajda savrulur; boyuna
+    // (longitudinal) düşükken kalkışta patinaj yapar. Zemin gövdesinin
+    // friction'ı da çarpıma girer (Jolt CombineFriction) — buz üstünde
+    // MaterialDatabase::ApplyToBody("ice") uygulanmış zemin, lastikten
+    // bağımsız olarak tutuşu düşürür.
+    float tireGripLongitudinal = 1.0f;
+    float tireGripLateral = 1.0f;
+    bool driven = true; // motor torku bu aksa ulaşır mı
 };
 
 struct EngineConfig {

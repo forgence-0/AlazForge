@@ -112,10 +112,11 @@ alazforge_add_helper_library(rope ROPE_API src/rope/RopeSystem.cpp)
 # buoyancy.dll — su hacimleri, yüzerlik
 alazforge_add_helper_library(buoyancy BUOYANCY_API src/buoyancy/BuoyancySystem.cpp)
 
-# destructible.dll — yıkılabilir yapılar
+# destructible.dll — yıkılabilir yapılar + Voronoi tabanlı gerçek zamanlı kırılma
 alazforge_add_helper_library(destructible DESTRUCTIBLE_API
     src/destructible/DestructibleChunkData.cpp
     src/destructible/DestructibleStructureSystem.cpp
+    src/destructible/VoronoiFracture.cpp
 )
 
 # ragdoll.dll — ragdoll iskelet + örnek
@@ -134,8 +135,11 @@ alazforge_add_helper_library(lod LOD_API src/lod/LODSystem.cpp)
 # aero.dll — paraşüt/planör aerodinamiği (taşıma + sürükleme)
 alazforge_add_helper_library(aero AERO_API src/aero/AeroSystem.cpp)
 
-# zones.dll — sürtünme bölgeleri (buz/çamur/yağ zemin koşulları)
-alazforge_add_helper_library(zones ZONES_API src/zones/FrictionZoneSystem.cpp)
+# zones.dll — sürtünme bölgeleri (buz/çamur/yağ zemin koşulları) + tetikleyici hacimler
+alazforge_add_helper_library(zones ZONES_API
+    src/zones/FrictionZoneSystem.cpp
+    src/zones/TriggerVolumeSystem.cpp
+)
 
 # magnetism.dll — manyetik/çekim alanları (izlenen gövdelere radyal kuvvet)
 alazforge_add_helper_library(magnetism MAGNETISM_API src/magnetism/MagneticFieldSystem.cpp)
@@ -143,8 +147,15 @@ alazforge_add_helper_library(magnetism MAGNETISM_API src/magnetism/MagneticField
 # fire.dll — ateş/yanma yayılım simülasyonu (Jolt'a bağımlı değil, saf graf)
 alazforge_add_helper_library(fire FIRE_API src/fire/FireSpreadSystem.cpp)
 
-# cloth.dll — Jolt SoftBody tabanlı kumaş/bayrak simülasyonu
-alazforge_add_helper_library(cloth CLOTH_API src/cloth/ClothSystem.cpp)
+# cloth.dll — Jolt SoftBody tabanlı kumaş/bayrak simülasyonu + hacimsel
+# yumuşak-cisim (soft-body block)
+alazforge_add_helper_library(cloth CLOTH_API
+    src/cloth/ClothSystem.cpp
+    src/cloth/SoftBodyBlock.cpp
+)
+
+# joints.dll — genel amaçlı yay/damper eklemi (DistanceConstraint tabanlı)
+alazforge_add_helper_library(joints JOINTS_API src/joints/SpringDamperJoint.cpp)
 
 # debugdraw.dll — Jolt DebugRenderer -> AlazEngine çizim callback köprüsü
 alazforge_add_helper_library(debugdraw DEBUGDRAW_API src/debugdraw/DebugDrawBridge.cpp)

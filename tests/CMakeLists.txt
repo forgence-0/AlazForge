@@ -88,6 +88,26 @@ target_link_libraries(alazforge_test_rope PRIVATE rope buoyancy)
 
 add_test(NAME rope COMMAND alazforge_test_rope)
 
+add_executable(alazforge_test_spring_damper_joint SpringDamperJointTest.cpp)
+target_link_libraries(alazforge_test_spring_damper_joint PRIVATE joints)
+
+add_test(NAME spring_damper_joint COMMAND alazforge_test_spring_damper_joint)
+
+add_executable(alazforge_test_trigger_volume TriggerVolumeTest.cpp)
+target_link_libraries(alazforge_test_trigger_volume PRIVATE zones)
+
+add_test(NAME trigger_volume COMMAND alazforge_test_trigger_volume)
+
+add_executable(alazforge_test_voronoi_fracture VoronoiFractureTest.cpp)
+target_link_libraries(alazforge_test_voronoi_fracture PRIVATE destructible)
+
+add_test(NAME voronoi_fracture COMMAND alazforge_test_voronoi_fracture)
+
+add_executable(alazforge_test_softbody_block SoftBodyBlockTest.cpp)
+target_link_libraries(alazforge_test_softbody_block PRIVATE cloth)
+
+add_test(NAME softbody_block COMMAND alazforge_test_softbody_block)
+
 add_executable(alazforge_test_realism RealismTest.cpp)
 target_link_libraries(alazforge_test_realism PRIVATE weapons)
 

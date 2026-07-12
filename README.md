@@ -7,10 +7,11 @@ edilir, kendi mimarisiyle genişletilir.
 
 ## Kütüphaneler
 
-Derleme çıktısı 18 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
+Derleme çıktısı 19 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
 `destructible`/`ragdoll`/`sportsball`/`character`/`rope`/`debugdraw`/
-`zones`/`cloth`/`aero`/`audio`/`lod`/`magnetism`/`fire` yalnızca `physics`'e
-bağımlıdır, birbirlerine değil; `physics` da yalnızca `jolt`'a bağımlıdır.
+`zones`/`cloth`/`aero`/`audio`/`lod`/`magnetism`/`fire`/`joints` yalnızca
+`physics`'e bağımlıdır, birbirlerine değil; `physics` da yalnızca `jolt`'a
+bağımlıdır.
 **`context` bu kuralın bilinçli tek istisnasıdır**: AlazEngine'in tek giriş
 noktası olması için `zones`/`buoyancy`/`lod`/`audio`/`debugdraw`/`destructible`'ı
 da sarmalar (aşağıda [AlazForgeContext](#alazforgecontext--entegrasyon-noktası)
@@ -34,6 +35,7 @@ jolt.dll  <-  physics.dll  <-  weapons.dll
                                                 context.dll (hepsini sarmalar)
                             <-  magnetism.dll
                             <-  fire.dll
+                            <-  joints.dll
 ```
 
 Her hedef `add_library(... SHARED ...)` ile tanımlı; Windows/MSVC'de bu,
@@ -46,20 +48,21 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | **physics** | `physics.dll` + `physics.lib` | `libphysics.so` | Ana fizik: adapter, spatial streaming, terrain deform, balistik, malzeme db, araç fiziği + enkaz kalıcılığı |
 | **weapons** | `weapons.dll` + `weapons.lib` | `libweapons.so` | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
 | **buoyancy** | `buoyancy.dll` + `buoyancy.lib` | `libbuoyancy.so` | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
-| **destructible** | `destructible.dll` + `destructible.lib` | `libdestructible.so` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
+| **destructible** | `destructible.dll` + `destructible.lib` | `libdestructible.so` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) + Voronoi tabanlı gerçek zamanlı kırılma (`VoronoiFracture`) |
 | **ragdoll** | `ragdoll.dll` + `ragdoll.lib` | `libragdoll.so` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
 | **context** | `context.dll` + `context.lib` | `libcontext.so` | `AlazForgeContext` — AlazEngine entegrasyonu için TEK giriş noktası: Jolt yaşam döngüsü + tüm world-scoped alt sistemleri (rüzgar/bölge/yüzerlik/LOD/ses-olayı/debug-çizim, isteğe bağlı terrain/destructible) tek bir `Step()` arkasında toplar |
 | **sportsball** | `sportsball.dll` + `sportsball.lib` | `libsportsball.so` | Topla oynanan sporlar (futbol, basketbol, hentbol, Amerikan futbolu vb.) için genel top fiziği: sürükleme (drag) + Magnus/spin etkisi |
 | **character** | `character.dll` + `character.lib` | `libcharacter.so` | Oyuncu/NPC karakter kontrolcüsü (`JPH::CharacterVirtual` üzerine): yürüme/koşma/zıplama, merdiven, eğim, hareketli platform |
 | **rope** | `rope.dll` + `rope.lib` | `librope.so` | Segment zinciri tabanlı halat/kablo fiziği (vinç, çekme halatı) — uçlar gövdelere sabitlenebilir |
 | **debugdraw** | `debugdraw.dll` + `debugdraw.lib` | `libdebugdraw.so` | Jolt DebugRenderer → AlazEngine çizim callback köprüsü (shape/constraint görselleştirme) |
-| **zones** | `zones.dll` + `zones.lib` | `libzones.so` | Sürtünme bölgeleri: buz/çamur/yağ zemin koşulları (gövde friction'ı bölgeye göre değişir) |
-| **cloth** | `cloth.dll` + `cloth.lib` | `libcloth.so` | Jolt SoftBody kumaş/bayrak simülasyonu (rüzgarda dalgalanır) |
+| **zones** | `zones.dll` + `zones.lib` | `libzones.so` | Sürtünme bölgeleri: buz/çamur/yağ zemin koşulları (gövde friction'ı bölgeye göre değişir) + tetikleyici hacimler (`TriggerVolumeSystem` — girildi/çıkıldı olayı) |
+| **cloth** | `cloth.dll` + `cloth.lib` | `libcloth.so` | Jolt SoftBody kumaş/bayrak simülasyonu (rüzgarda dalgalanır) + hacimsel yumuşak-cisim (`SoftBodyBlock` — tetrahedron hacim koruma kısıtlı 3B soft-body) |
 | **aero** | `aero.dll` + `aero.lib` | `libaero.so` | Paraşüt + planör/wingsuit aerodinamiği (taşıma + sürükleme) |
 | **audio** | `audio.dll` + `audio.lib` | `libaudio.so` | `JPH::ContactListener` tabanlı çarpışma-olayı köprüsü: şiddet + malzeme etiketli olay kuyruğu, ses tetikleme için |
 | **lod** | `lod.dll` + `lod.lib` | `liblod.so` | Mesafeye göre genel amaçlı gövde uyutma/uyandırma (LOD) — uzak dinamik gövdeleri histerezisli zorla uyutur |
 | **magnetism** | `magnetism.dll` + `magnetism.lib` | `libmagnetism.so` | Manyetik/çekim alanları — izlenen gövdelere ters-kare radyal kuvvet (çekme/itme) |
 | **fire** | `fire.dll` + `fire.lib` | `libfire.so` | Ateş/yanma yayılım simülasyonu — zaman-biriktirmeli, deterministik düğüm-graf yayılımı (Jolt'a bağımlı değil) |
+| **joints** | `joints.dll` + `joints.lib` | `libjoints.so` | Genel amaçlı yay/damper eklemi (`SpringDamperJoint`) — `JPH::DistanceConstraint` + yumuşak limit yayı üzerine |
 
 > `.lib` dosyaları Windows'ta consumer'ın (AlazEngine) derleme zamanında DLL'e
 > bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
@@ -80,6 +83,7 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | `src/weapons` | weapons | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
 | `src/buoyancy` | buoyancy | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
 | `src/destructible` | destructible | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
+| `src/destructible/VoronoiFracture` | destructible | Yarı-uzay kırpma ile gerçek Voronoi hücresi hesaplama + darbe noktasından gerçek zamanlı parçalanma |
 | `src/ragdoll` | ragdoll | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
 | `src/context` | context | `AlazForgeContext` — AlazEngine entegrasyonu için tek giriş noktası facade'ı |
 | `src/sportsball` | sportsball | Topla oynanan sporlar için genel top fiziği (sürükleme + Magnus/spin) |
@@ -88,13 +92,16 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | `src/debugdraw` | debugdraw | Debug görselleştirme köprüsü (çizgi/üçgen callback'leri) |
 | `src/wind` | physics | Küresel rüzgar sistemi (deterministik türbülans — balistik/top/halat/kumaş besler) |
 | `src/zones` | zones | Sürtünme bölgeleri (buz/çamur — girince friction değişir, çıkınca döner) |
+| `src/zones/TriggerVolumeSystem` | zones | Tetikleyici hacimler: eksene hizalı kutu bölgeler, girildi/çıkıldı olayı üretir |
 | `src/cloth` | cloth | Kumaş/bayrak (Jolt SoftBody grid + rüzgar sürüklemesi) |
+| `src/cloth/SoftBodyBlock` | cloth | Hacimsel yumuşak-cisim: tetrahedron ayrıştırması + gerçek hacim koruma kısıtı |
 | `src/aero` | aero | Paraşüt/planör aerodinamiği |
 | `src/audio` | audio | Çarpışma-olayı → ses tetikleme köprüsü (`ContactListener` tabanlı) |
 | `src/lod` | lod | Mesafeye göre gövde uyutma/uyandırma (genel amaçlı LOD) |
 | `src/vehicle/TrackBeltSystem` | physics | Genel kayış/tırtıl link yerleşim geometrisi (N eşit-yarıçaplı makara etrafında) |
 | `src/magnetism` | magnetism | Manyetik/çekim alanları (radyal çekme/itme kuvveti) |
 | `src/fire` | fire | Ateş/yanma yayılım simülasyonu (deterministik düğüm-graf) |
+| `src/joints` | joints | Genel amaçlı yay/damper eklemi (`SpringDamperJoint`) |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
@@ -330,6 +337,46 @@ kurulup kırık durumun geri geldiğini kanıtlıyor).
 Yeni `track_belt`/`magnetism`/`fire_spread` testleriyle 29/29 yerel ctest
 yeşil.
 
+### T1 — fizik derinliği: yay/damper eklemi + tetikleyici hacim + Voronoi kırılma + hacimsel soft-body
+
+- **`joints.dll` (`SpringDamperJoint`)** — genel amaçlı yay/damper eklemi.
+  `JPH::DistanceConstraint`'i min=max=dinlenme mesafesi ve yumuşak limit
+  yayı (`mLimitsSpringSettings`) ile kurar — kendi yay integrasyonumuz
+  yazılmadı, gerçek fizik motoru çözücüsünden geçer. `CurrentLength()` ve
+  `CurrentTensionForce(dt)` sorguları var (ikincisi `RopeSystem`'in kopma
+  tespitiyle aynı `lambda/dt` yöntemini kullanır). Kullanım alanları: araç
+  gövdesi süspansiyon dışı yay bağlantıları, sarkaç/yay tuzakları, esnek
+  montaj noktaları.
+- **`TriggerVolumeSystem`** (`src/zones/TriggerVolumeSystem`, `zones.dll`) —
+  eksene hizalı kutu tetikleyici hacimler: izlenen bir gövde hacme girip
+  çıktığında tam olarak bir `Entered`/`Exited` olayı üretir (içeride/dışarıda
+  kalırken tekrar üretmez). `FrictionZoneSystem`/`MagneticFieldSystem`/
+  `WindSystem` bilinçli olarak ortak bir taban sınıfa taşınmadı — üçü de
+  farklı per-frame etki mantığına sahip ve zaten üretimde test edilmiş
+  durumda; kozmetik bir birleştirme için regresyon riski alınmadı.
+- **`VoronoiFracture`** (`src/destructible/VoronoiFracture`,
+  `destructible.dll`) — bir bölgeyi (AABB) verilen tohum noktalarına göre
+  GERÇEK Voronoi hücrelerine ayırır: yarı-uzay kırpma (half-space clipping)
+  ile her tohumun dışbükey çokyüzlü hücresi tam olarak hesaplanır (yaklaşık
+  değil — test, her hücrenin her köşesinin kendi tohumuna diğer TÜM
+  tohumlardan daha yakın olduğunu doğrudan geometrik olarak doğruluyor).
+  `FractureVoronoi` her hücre için gerçek bir `JPH::ConvexHullShape`
+  dinamik gövdesi oluşturup darbe noktasından radyal dışa itme uygular.
+  Mevcut önceden-tanımlı parça grafiği tabanlı `DestructibleStructureSystem`'e
+  EK, bağımsız bir kırılma modu (cam/taş gibi düzensiz kırılma isteyen
+  malzemeler için).
+- **`SoftBodyBlock`** (`src/cloth/SoftBodyBlock`, `cloth.dll`) —
+  `ClothSystem`'in (2B yüzey ağı) 3B/hacimsel genellemesi: bir prizma,
+  vertex grid'ine bölünüp her hücre kösegen etrafında 6 tetrahedrona
+  ayrılır, her tetrahedron için Jolt'un gerçek hacim koruma kısıtı
+  (`JPH::SoftBodySharedSettings::Volume`) eklenir. Test, tetrahedron
+  ayrıştırmasının tam (boşluksuz/örtüşmesiz) olduğunu ve yere düşüp
+  sıkıştıktan sonra hacmin büyük ölçüde korunduğunu (saf yüzey ağı gibi
+  sıfıra çökmediğini) doğruluyor.
+
+Yeni `spring_damper_joint`/`trigger_volume`/`voronoi_fracture`/
+`softbody_block` testleriyle 33/33 yerel ctest yeşil.
+
 ## Performans — sistem bazlı ölçüm
 
 `tests/BenchmarkMain.cpp` (`build/tests/alazforge_bench`, `ctest`'e kayıtlı
@@ -469,7 +516,7 @@ zaten gerekmiyor).
 
 ## Test
 
-29 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+33 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -502,13 +549,17 @@ zaten gerekmiyor).
 | `track_belt` | Araç tekerlek transform sorgusu + TrackBeltSystem kayış geometrisi |
 | `magnetism` | Manyetik alan çekme/itme + yarıçap sınırı |
 | `fire_spread` | Ateş yayılımı (eşik/yarıçap/yanmazlık), sönme, determinizm |
+| `spring_damper_joint` | Yay/damper eklemi: sönümlü yakınsama, gerginlik ölçümü, kaldırılınca serbest kalma |
+| `trigger_volume` | Tetikleyici hacim: girdi/çıktı olayı tam bir kez üretilir, izlemeyi bırakınca olay üretilmez |
+| `voronoi_fracture` | Voronoi hücrelerinin gerçek geometrik doğruluğu (her köşe kendi tohumuna en yakın) + darbe itmesiyle gerçek gövde üretimi |
+| `softbody_block` | Tetrahedron ayrıştırmasının tam hacimli olması + düşüp sıkıştıktan sonra hacim korunumu |
 
 ## Build
 
-AlazForge 18 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
+AlazForge 19 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
 `buoyancy`, `destructible`, `ragdoll`, `context`, `sportsball`, `character`,
 `rope`, `debugdraw`, `zones`, `cloth`, `aero`, `audio`, `lod`, `magnetism`,
-`fire`). Bkz. [Kütüphaneler](#kütüphaneler).
+`fire`, `joints`). Bkz. [Kütüphaneler](#kütüphaneler).
 
 ```
 git clone --recursive <repo-url>

@@ -78,7 +78,7 @@ void RopeSystem::Create(JPH::PhysicsSystem& inPhysics, const Vec3& startPos, con
     for (int i = 0; i + 1 < count; ++i) {
         const JPH::RVec3 joint = start + dir * (segLength * static_cast<float>(i + 1));
         JPH::Ref<JPH::Constraint> c = CreateBallJoint(*physics, segments[static_cast<size_t>(i)],
-                                                      segments[static_cast<size_t>(i + 1)], joint);
+                                                      segments[static_cast<size_t>(i) + 1], joint);
         if (c) constraints.push_back(c);
     }
     segmentJointCount = constraints.size();

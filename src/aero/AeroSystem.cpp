@@ -15,8 +15,8 @@ void AeroSystem::ApplyParachute(JPH::PhysicsSystem& physics, JPH::BodyID body,
     // Kuadratik surukleme, hiza ters yonde
     const JPH::Vec3 force = rel * (-config.dragCoefficient * speed);
     // Baglanti noktasi govde merkezinin ustunde: cisim kendini diklestirir
-    const JPH::RVec3 attachPoint = bi.GetCenterOfMassPosition(body) +
-                                   JPH::RVec3(0.0, static_cast<double>(config.attachHeight), 0.0);
+    const JPH::RVec3 attachPoint =
+        bi.GetCenterOfMassPosition(body) + JPH::RVec3(0.0f, config.attachHeight, 0.0f);
     bi.AddForce(body, force, attachPoint);
     bi.ActivateBody(body);
 }

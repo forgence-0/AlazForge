@@ -126,6 +126,13 @@ alazforge_add_helper_library(ragdoll RAGDOLL_API
 # context.dll — AlazForgeContext (ECS bridge facade'ı)
 alazforge_add_helper_library(context CONTEXT_API src/context/AlazForgeContext.cpp)
 
+# audio.dll — çarpışma olaylarını (şiddet+malzeme) ses tetiklemesi için
+# olay listesine çeviren köprü (ContactListener tabanlı)
+alazforge_add_helper_library(audio AUDIO_API src/audio/CollisionEventSystem.cpp)
+
+# lod.dll — mesafeye göre gövde uyutma/uyandırma (genel amaçlı LOD)
+alazforge_add_helper_library(lod LOD_API src/lod/LODSystem.cpp)
+
 # aero.dll — paraşüt/planör aerodinamiği (taşıma + sürükleme)
 alazforge_add_helper_library(aero AERO_API src/aero/AeroSystem.cpp)
 

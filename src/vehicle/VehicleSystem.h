@@ -121,12 +121,24 @@ public:
 
     JPH::VehicleConstraint* Constraint() { return constraint; }
 
+    // ── Hasar modeli ────────────────────────────────────────────────
+    // impactSpeed (m/s, çarpışma normali doğrultusunda bağıl hız —
+    // CollisionEventSystem::CollisionEvent::impactSpeed ile doğrudan
+    // uyumlu) kadar hasar biriktirir. Motor gücü, direksiyon açısı ve
+    // fren torku sağlıkla orantılı azalır (0 sağlık = araç sürülemez
+    // hale gelir, WreckPersistence'a devredilmeye hazır).
+    void ApplyImpactDamage(float impactSpeed);
+    float GetHealth() const { return health; } // 1 = sağlam, 0 = hurda
+    bool IsDrivable() const { return health > 0.05f; }
+
 private:
     JPH::PhysicsSystem* physics = nullptr;
     JPH::BodyID bodyId;
     JPH::Ref<JPH::VehicleConstraint> constraint;
     JPH::Ref<JPH::VehicleCollisionTester> tester;
     VehicleKind kind = VehicleKind::None;
+    float health = 1.0f;
+    float baseEngineTorque = 0.0f; // hasarsız motor torku (yuzde hesaplamak icin)
 
     void Wake();
     JPH::BodyID CreateChassisBody(const VehicleChassisConfig& chassis, JPH::ObjectLayer layer);

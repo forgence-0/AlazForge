@@ -66,6 +66,8 @@ void VehicleSystem::CreateWheeled(JPH::PhysicsSystem& inPhysics,
     controller->mEngine.mMaxTorque = engine.maxTorque;
     controller->mEngine.mMinRPM = engine.minRPM;
     controller->mEngine.mMaxRPM = engine.maxRPM;
+    baseEngineTorque = engine.maxTorque;
+    health = 1.0f;
     controller->mTransmission.mGearRatios.assign(trans.gearRatios.begin(), trans.gearRatios.end());
     controller->mTransmission.mReverseGearRatios.assign(trans.reverseGearRatios.begin(),
                                                         trans.reverseGearRatios.end());
@@ -99,6 +101,8 @@ void VehicleSystem::CreateTracked(JPH::PhysicsSystem& inPhysics,
     controller->mEngine.mMaxTorque = engine.maxTorque;
     controller->mEngine.mMinRPM = engine.minRPM;
     controller->mEngine.mMaxRPM = engine.maxRPM;
+    baseEngineTorque = engine.maxTorque;
+    health = 1.0f;
     controller->mTransmission.mGearRatios.assign(trans.gearRatios.begin(), trans.gearRatios.end());
     controller->mTransmission.mReverseGearRatios.assign(trans.reverseGearRatios.begin(),
                                                         trans.reverseGearRatios.end());
@@ -238,6 +242,30 @@ void VehicleSystem::FinalizeConstraint(JPH::VehicleConstraintSettings& vc,
 
     physics->AddConstraint(constraint);
     physics->AddStepListener(constraint);
+}
+
+void VehicleSystem::ApplyImpactDamage(float impactSpeed) {
+    if (!constraint || baseEngineTorque <= 0.0f) return;
+
+    // Basit doğrusal hasar modeli: eşik altındaki darbeler (park manevrası,
+    // hafif sürtme) hasar vermez; üstündekiler hıza orantılı sağlık düşürür.
+    constexpr float kDamageThresholdSpeed = 4.0f; // m/s, bu hızın altı zararsız
+    constexpr float kDamagePerMs = 0.02f;         // her fazladan 1 m/s -> %2 saglik kaybi
+    if (impactSpeed <= kDamageThresholdSpeed) return;
+
+    const float damage = (impactSpeed - kDamageThresholdSpeed) * kDamagePerMs;
+    health = std::max(0.0f, health - damage);
+
+    // Motor gucu saglikla dogrusal duser -- hurda araç suruleemez hale gelir.
+    // (Direksiyon/fren torku Jolt'un WheelSettings'i runtime'da const olarak
+    // tuttugu icin degistirilemiyor; motor kaybi asil oynanis etkisidir.)
+    if (kind == VehicleKind::Wheeled) {
+        auto* c = static_cast<JPH::WheeledVehicleController*>(constraint->GetController());
+        c->GetEngine().mMaxTorque = baseEngineTorque * health;
+    } else if (kind == VehicleKind::Tracked) {
+        auto* c = static_cast<JPH::TrackedVehicleController*>(constraint->GetController());
+        c->GetEngine().mMaxTorque = baseEngineTorque * health;
+    }
 }
 
 void VehicleSystem::Destroy() {

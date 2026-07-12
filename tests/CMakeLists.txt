@@ -93,6 +93,11 @@ target_link_libraries(alazforge_test_realism2 PRIVATE buoyancy zones cloth)
 
 add_test(NAME realism2 COMMAND alazforge_test_realism2)
 
+add_executable(alazforge_test_realism3 Realism3Test.cpp)
+target_link_libraries(alazforge_test_realism3 PRIVATE character weapons destructible aero)
+
+add_test(NAME realism3 COMMAND alazforge_test_realism3)
+
 add_executable(alazforge_test_world_state WorldStateTest.cpp)
 target_link_libraries(alazforge_test_world_state PRIVATE context)
 

@@ -28,6 +28,14 @@ struct RopeConfig {
     float totalLength = 8.0f;  // toplam halat uzunluğu (m)
     float radius = 0.03f;      // halat yarıçapı (m)
     float massPerMeter = 0.5f; // kg/m (çelik halat ~0.4-4 arası)
+
+    // Segmentler arası top eklemin kopma eşiği (Newton). Gerginlik,
+    // JPH::PointConstraint'in son adımda çözdüğü impuls büyüklüğünden
+    // (lambda/dt ~ kuvvet) okunur — Jolt'un kendi breakable-constraint
+    // örneklerinde kullanılan yöntem. 0 = kopmaz (varsayılan, geriye
+    // uyumlu). Uç bağlantıları (AttachStartTo/AttachEndTo) bu kontrole
+    // dahil değil, yalnızca segmentler arası eklemler kopabilir.
+    float maxTensionN = 0.0f;
 };
 
 class ROPE_API RopeSystem {
@@ -51,6 +59,21 @@ public:
     int SegmentCount() const { return static_cast<int>(segments.size()); }
     Transform GetSegmentTransform(int index) const; // render için
 
+    // Belirli bir segmentin gövde id'si -- örn. dışarıdan impulse/kuvvet
+    // uygulamak (bir cisim halatı yakalayıp çekmek) veya BodyInterface
+    // sorguları için. Aralık dışında geçersiz JPH::BodyID döner.
+    JPH::BodyID GetSegmentBodyID(int index) const;
+
+    // Her fizik adımından SONRA çağrılır: config.maxTensionN'i aşan
+    // segment eklemlerini fizikten kaldırır (halat gerçekten ikiye
+    // ayrılır — parçalar artık serbestçe düşer). outBrokenJoints
+    // verilirse kırılan eklem indeksleri (0..SegmentCount()-2) eklenir.
+    // maxTensionN <= 0 ise no-op (kopmaz halat, varsayılan).
+    void Update(float dt, std::vector<int>* outBrokenJoints = nullptr);
+
+    // jointIndex'teki segmentler-arası eklem koptu mu (veya aralık dışı).
+    bool IsJointBroken(int jointIndex) const;
+
     void Destroy();
 
 private:
@@ -60,6 +83,9 @@ private:
     JPH::PhysicsSystem* physics = nullptr;
     std::vector<JPH::BodyID> segments;
     std::vector<JPH::Ref<JPH::Constraint>> constraints;
+    // constraints[0..segmentJointCount) = segmentler arası eklemler (kopabilir);
+    // bunun ötesi AttachStartTo/AttachEndTo'dan gelen uç bağlantıları.
+    size_t segmentJointCount = 0;
 };
 
 } // namespace alazforge

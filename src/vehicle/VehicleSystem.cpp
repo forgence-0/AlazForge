@@ -50,6 +50,8 @@ void VehicleSystem::CreateWheeled(JPH::PhysicsSystem& inPhysics,
     physics = &inPhysics;
     kind = VehicleKind::Wheeled;
     bodyId = CreateChassisBody(chassis, testerLayer);
+    dragCoefficient = chassis.dragCoefficient;
+    frontalAreaM2 = chassis.frontalAreaM2;
 
     JPH::VehicleConstraintSettings vc;
     vc.mMaxPitchRollAngle = JPH::DegreesToRadians(chassis.maxPitchRollAngleDeg);
@@ -92,6 +94,8 @@ void VehicleSystem::CreateTracked(JPH::PhysicsSystem& inPhysics,
     physics = &inPhysics;
     kind = VehicleKind::Tracked;
     bodyId = CreateChassisBody(chassis, testerLayer);
+    dragCoefficient = chassis.dragCoefficient;
+    frontalAreaM2 = chassis.frontalAreaM2;
 
     JPH::VehicleConstraintSettings vc;
     vc.mMaxPitchRollAngle = JPH::DegreesToRadians(chassis.maxPitchRollAngleDeg);
@@ -266,6 +270,18 @@ void VehicleSystem::ApplyImpactDamage(float impactSpeed) {
         auto* c = static_cast<JPH::TrackedVehicleController*>(constraint->GetController());
         c->GetEngine().mMaxTorque = baseEngineTorque * health;
     }
+}
+
+void VehicleSystem::ApplyAeroDrag(float dt, float airDensity) {
+    if (!physics || dragCoefficient <= 0.0f || dt <= 0.0f) return;
+
+    JPH::BodyInterface& bi = physics->GetBodyInterface();
+    const JPH::Vec3 vel = bi.GetLinearVelocity(bodyId);
+    const float speed = vel.Length();
+    if (speed < 1.0e-4f) return;
+
+    const float dragMag = 0.5f * airDensity * dragCoefficient * frontalAreaM2 * speed * speed;
+    bi.AddForce(bodyId, -vel.Normalized() * dragMag);
 }
 
 void VehicleSystem::Destroy() {

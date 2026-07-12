@@ -77,6 +77,13 @@ struct VehicleChassisConfig {
     float maxPitchRollAngleDeg = 60.0f; // devrilme koruması
     float comLowerRatio =
         0.7f; // ağırlık merkezini gövde yarı-yüksekliğinin bu oranı kadar aşağı al
+
+    // Hava direnci: F = -0.5 * havaYoğunluğu * dragCoefficient * frontalAreaM2
+    // * |v| * v (hıza karşıt kuadratik sürükleme). dragCoefficient <= 0
+    // devre dışı bırakır (varsayılan, geriye uyumlu — eski davranış
+    // değişmez). Ağır vasıta için Cd tipik 0.6-0.9 arası.
+    float dragCoefficient = 0.0f;
+    float frontalAreaM2 = 6.0f;
 };
 
 enum class VehicleKind : uint8_t { None, Wheeled, Tracked };
@@ -131,6 +138,12 @@ public:
     float GetHealth() const { return health; } // 1 = sağlam, 0 = hurda
     bool IsDrivable() const { return health > 0.05f; }
 
+    // ── Hava direnci ──────────────────────────────────────────────
+    // Her fizik adımından sonra (veya önce, tutarlı olsun yeter) çağrılır
+    // — gövde hızına karşıt kuadratik hava sürtünmesi uygular. Chassis
+    // config'inde dragCoefficient <= 0 ise no-op (varsayılan davranış).
+    void ApplyAeroDrag(float dt, float airDensity = 1.225f);
+
 private:
     JPH::PhysicsSystem* physics = nullptr;
     JPH::BodyID bodyId;
@@ -139,6 +152,8 @@ private:
     VehicleKind kind = VehicleKind::None;
     float health = 1.0f;
     float baseEngineTorque = 0.0f; // hasarsız motor torku (yuzde hesaplamak icin)
+    float dragCoefficient = 0.0f;
+    float frontalAreaM2 = 6.0f;
 
     void Wake();
     JPH::BodyID CreateChassisBody(const VehicleChassisConfig& chassis, JPH::ObjectLayer layer);

@@ -84,9 +84,20 @@ void BuoyancySystem::Update(JPH::PhysicsSystem& physics, float dt) {
         const float surfaceHeight = SurfaceHeightAt(*volume, pos.x, pos.z);
         const JPH::RVec3 surfacePos(body.GetPosition().GetX(), surfaceHeight,
                                     body.GetPosition().GetZ());
+
+        float depthFactor = 1.0f;
+        if (volume->depthDragMultiplierMax > 1.0f) {
+            const float depth = surfaceHeight - pos.y;
+            if (depth > 0.0f) {
+                const float t = std::min(depth / std::max(volume->depthSaturationM, 1.0e-3f), 1.0f);
+                depthFactor = 1.0f + t * (volume->depthDragMultiplierMax - 1.0f);
+            }
+        }
+
         body.ApplyBuoyancyImpulse(surfacePos, JPH::Vec3(0, 1, 0), volume->buoyancyFactor,
-                                  volume->linearDrag, volume->angularDrag,
-                                  ToJolt(volume->flowVelocity), physics.GetGravity(), dt);
+                                  volume->linearDrag * depthFactor,
+                                  volume->angularDrag * depthFactor, ToJolt(volume->flowVelocity),
+                                  physics.GetGravity(), dt);
     }
 }
 

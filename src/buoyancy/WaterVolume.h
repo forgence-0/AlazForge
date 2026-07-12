@@ -24,6 +24,16 @@ struct WaterVolume {
     float waveLength = 12.0f;    // tepe-tepe mesafe (m)
     float waveSpeed = 1.5f;      // ilerleme hızı (m/s)
     Vec3 waveDirection{1, 0, 0}; // ilerleme yönü (xz düzleminde)
+
+    // ── Derinliğe bağlı direnç (basınç/viskozite yaklaşıklaması) ───────
+    // Yüzeyde linearDrag/angularDrag aynen uygulanır (çarpan=1); derinlik
+    // arttıkça depthSaturationM'de depthDragMultiplierMax'e ulaşana kadar
+    // doğrusal artar (gerçek su basıncı derinlikle katlanarak artar ama bir
+    // oyun motoru için doğrusal yaklaşıklık yeterli ve deterministik).
+    // depthDragMultiplierMax <= 1 devre dışı bırakır (varsayılan, geriye
+    // uyumlu — eski davranış değişmez).
+    float depthDragMultiplierMax = 1.0f;
+    float depthSaturationM = 5.0f;
 };
 
 } // namespace alazforge

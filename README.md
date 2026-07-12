@@ -56,7 +56,7 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 > bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
 > yükleme zamanında asıl `.dll` gerekir. Tüm kütüphaneler (Jolt'un `jolt.dll`
 > olarak SHARED derlenmesi dahil) gerçek submodule checkout'uyla lokal olarak
-> derlenip 24/24 testle doğrulandı.
+> derlenip 25/25 testle doğrulandı.
 
 ## Modüller
 
@@ -204,9 +204,28 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
   gövdeler histerezisli olarak zorla uyutulur/uyandırılır; Jolt'un kendi
   uyku mekanizmasından bağımsız, mesafeye dayalı CPU tasarrufu.
 
+### R4 — Derinlik geçişi (araç/balistik/yıkım/termal-sıvı)
+
+- **Araç hava direnci** (`VehicleSystem::ApplyAeroDrag`) — gövde hızına
+  karşıt kuadratik hava sürtünmesi (F = 0.5·ρ·Cd·A·v²); `dragCoefficient
+  <= 0` ile devre dışı (varsayılan, geriye uyumlu).
+- **Balistik spin drift** (`BulletParams::spinDriftAccel`) — yiv
+  kararlılığından kaynaklanan yanal sürüklenmenin basitleştirilmiş,
+  deterministik modeli (sabit yanal ivme, ateş yönüne dik sağ eksende).
+  Gerçek gyroskopik "yaw of repose" fiziği modellenmez.
+- **Su derinliğine bağlı direnç** (`WaterVolume::depthDragMultiplierMax`)
+  — derinlik arttıkça linear/angular drag doğrusal olarak artar (basınç/
+  viskozite yaklaşıklığı); yüzeyde çarpan=1, `depthSaturationM`'de
+  maksimuma ulaşır. `depthDragMultiplierMax <= 1` ile devre dışı
+  (varsayılan, geriye uyumlu — eski davranış değişmez).
+- **Halat kopması** (`RopeSystem::maxTensionN` + `Update`) — segmentler
+  arası top eklemin taşıdığı gerginlik (`JPH::PointConstraint::
+  GetTotalLambdaPosition() / dt`) eşiği aşınca eklem fizikten kaldırılır,
+  halat gerçekten ikiye ayrılır. `maxTensionN <= 0` ile kopmaz (varsayılan).
+
 ## Test
 
-24 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+25 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -234,6 +253,7 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 | `realism3` | Çömelme/alçak tavan, yüzme+akıntı, fırlatma yörüngesi, enkaz, paraşüt/planör |
 | `s1_collision_damage` | Çarpışma olayı eşik/malzeme etiketleme + araç hasar modeli eşiği |
 | `lod_system` | Mesafeye göre zorla uyutma/uyandırma + histerezis |
+| `realism4` | Araç hava direnci, balistik spin drift + determinizm, su derinlik direnci, halat kopması |
 
 ## Build
 

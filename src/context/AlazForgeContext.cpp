@@ -96,9 +96,26 @@ AlazForgeContext::AlazForgeContext(const Config& inConfig) : config(inConfig) {
 
     materials = std::make_unique<MaterialDatabase>(MaterialDatabase::CreateDefault());
     ballistics = std::make_unique<BallisticsSystem>(*physics, *materials);
+
+    wind = std::make_unique<WindSystem>(config.wind);
+    zones = std::make_unique<FrictionZoneSystem>();
+    buoyancy = std::make_unique<BuoyancySystem>();
+    lod = std::make_unique<LODSystem>(LODConfig{});
+    debugDraw = std::make_unique<DebugDrawBridge>();
+
+    collisionEvents = std::make_unique<CollisionEventSystem>(config.collisionEventMinImpactSpeed);
+    collisionEvents->Attach(*physics);
 }
 
 AlazForgeContext::~AlazForgeContext() {
+    destructible.reset();
+    terrain.reset();
+    collisionEvents.reset();
+    debugDraw.reset();
+    lod.reset();
+    buoyancy.reset();
+    zones.reset();
+    wind.reset();
     ballistics.reset();
     materials.reset();
     physics.reset();
@@ -116,8 +133,17 @@ AlazForgeContext::~AlazForgeContext() {
     }
 }
 
-void AlazForgeContext::Step(float dt, int collisionSteps) {
+void AlazForgeContext::Step(float dt, int collisionSteps, const Vec3* lodReferencePoint) {
+    // Sirali guncelleme: zones/buoyancy fizik adimindan ONCE (o adimda
+    // gecerli olacak friction/drag degerlerini kursunlar), fizik adimi,
+    // sonra LOD (bir sonraki adim icin uyut/uyandir kararini versin).
+    wind->Update(dt);
+    zones->Update(*physics);
+    buoyancy->Update(*physics, dt);
+
     physics->Update(dt, collisionSteps, tempAllocator.get(), jobSystem.get());
+
+    if (lodReferencePoint) lod->Update(*physics, *lodReferencePoint);
 }
 
 JPH::PhysicsSystem& AlazForgeContext::Physics() { return *physics; }
@@ -125,6 +151,31 @@ JPH::PhysicsSystem& AlazForgeContext::Physics() { return *physics; }
 BallisticsSystem& AlazForgeContext::Ballistics() { return *ballistics; }
 
 MaterialDatabase& AlazForgeContext::Materials() { return *materials; }
+
+WindSystem& AlazForgeContext::Wind() { return *wind; }
+
+FrictionZoneSystem& AlazForgeContext::Zones() { return *zones; }
+
+BuoyancySystem& AlazForgeContext::Buoyancy() { return *buoyancy; }
+
+LODSystem& AlazForgeContext::LOD() { return *lod; }
+
+DebugDrawBridge& AlazForgeContext::DebugDraw() { return *debugDraw; }
+
+void AlazForgeContext::DrainCollisionEvents(std::vector<CollisionEvent>& out) {
+    collisionEvents->DrainEvents(out);
+}
+
+TerrainDeformSystem& AlazForgeContext::EnableTerrain(const TerrainDeformSystem::Config& cfg) {
+    if (!terrain) terrain = std::make_unique<TerrainDeformSystem>(cfg);
+    return *terrain;
+}
+
+DestructibleStructureSystem& AlazForgeContext::EnableDestructible(
+    const DestructibleStructureSystem::Config& cfg) {
+    if (!destructible) destructible = std::make_unique<DestructibleStructureSystem>(cfg);
+    return *destructible;
+}
 
 size_t AlazForgeContext::SnapshotActiveBodies(std::vector<BodySnapshot>& out) const {
     out.clear();

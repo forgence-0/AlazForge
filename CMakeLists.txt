@@ -123,9 +123,6 @@ alazforge_add_helper_library(ragdoll RAGDOLL_API
     src/ragdoll/RagdollInstance.cpp
 )
 
-# context.dll — AlazForgeContext (ECS bridge facade'ı)
-alazforge_add_helper_library(context CONTEXT_API src/context/AlazForgeContext.cpp)
-
 # audio.dll — çarpışma olaylarını (şiddet+malzeme) ses tetiklemesi için
 # olay listesine çeviren köprü (ContactListener tabanlı)
 alazforge_add_helper_library(audio AUDIO_API src/audio/CollisionEventSystem.cpp)
@@ -161,6 +158,14 @@ endif()
 alazforge_add_helper_library(sportsball SPORTSBALL_API
     src/sportsball/BallPhysicsSystem.cpp
 )
+
+# context.dll — AlazForgeContext: AlazEngine entegrasyonu icin TEK giris
+# noktasi (facade). Diger yardimcilarin aksine (yalnizca physics'e bagimli
+# olma kurali), context BILINCLI OLARAK istisna -- amaci butun world-scoped
+# alt sistemleri (zones/buoyancy/lod/audio/debugdraw/destructible) tek bir
+# Step() arkasinda toplamak, bu yuzden hepsine bagimli olmasi gerekiyor.
+alazforge_add_helper_library(context CONTEXT_API src/context/AlazForgeContext.cpp)
+target_link_libraries(context PUBLIC zones buoyancy lod audio debugdraw destructible)
 
 # ── Testler ─────────────────────────────────────────────────────────
 enable_testing()

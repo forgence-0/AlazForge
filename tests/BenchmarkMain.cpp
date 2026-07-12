@@ -486,6 +486,206 @@ void BenchLOD() {
            lodMs);
 }
 
+// ── HEPSI BIRLIKTE: tek sahnede tum sistemler ayni anda ───────────────────
+// Izole olcumlerin toplamı degil -- GERCEK tek Step() maliyeti (paylasilan
+// broad-phase/job-sistemi overhead'i izole olculdugunde her senaryoda ayri
+// ayri sayilirdi, burada bir kez).
+void BenchCombinedAll() {
+    AlazForgeContext::Config cfg;
+    cfg.maxBodies = 8192;
+    cfg.maxBodyPairs = 16384;
+    cfg.maxContactConstraints = 16384;
+    AlazForgeContext ctx(cfg);
+    JPH::BodyInterface& bi = ctx.Physics().GetBodyInterface();
+
+    AddGround(bi, cfg.nonMovingLayer, 300.0f);
+
+    // Arac (20)
+    constexpr int kVehicles = 20;
+    std::vector<VehicleSystem> vehicles(kVehicles);
+    EngineConfig engine;
+    TransmissionConfig trans;
+    for (int i = 0; i < kVehicles; ++i) {
+        VehicleChassisConfig chassis;
+        chassis.position = Vec3{static_cast<float>(i) * 15.0f - 150.0f, 2.0f, -100.0f};
+        vehicles[static_cast<size_t>(i)].CreateWheeled(ctx.Physics(), chassis, SimpleTruckAxles(),
+                                                       engine, trans, cfg.movingLayer);
+    }
+
+    // Karakter (100)
+    constexpr int kCharacters = 100;
+    CharacterControllerConfig charCfg;
+    std::vector<std::unique_ptr<CharacterController>> characters;
+    characters.reserve(kCharacters);
+    for (int i = 0; i < kCharacters; ++i) {
+        characters.push_back(std::make_unique<CharacterController>(charCfg));
+        const float x = static_cast<float>(i % 10) * 2.0f - 10.0f;
+        const float z = static_cast<float>(i / 10) * 2.0f + 50.0f;
+        characters.back()->Spawn(ctx.Physics(), Vec3{x, 1.0f, z}, cfg.movingLayer);
+    }
+
+    // Kumas (20)
+    constexpr int kCloths = 20;
+    ClothConfig clothCfg;
+    std::vector<std::unique_ptr<ClothSystem>> cloths;
+    cloths.reserve(kCloths);
+    for (int i = 0; i < kCloths; ++i) {
+        cloths.push_back(std::make_unique<ClothSystem>(clothCfg));
+        const float x = static_cast<float>(i) * 4.0f - 40.0f;
+        cloths.back()->Create(ctx.Physics(), Vec3{x, 10.0f, 100.0f}, cfg.movingLayer);
+    }
+
+    // Halat (30)
+    constexpr int kRopes = 30;
+    RopeConfig ropeCfg;
+    std::vector<std::unique_ptr<RopeSystem>> ropes;
+    ropes.reserve(kRopes);
+    for (int i = 0; i < kRopes; ++i) {
+        ropes.push_back(std::make_unique<RopeSystem>(ropeCfg));
+        const float x = static_cast<float>(i) * 2.0f - 30.0f;
+        ropes.back()->Create(ctx.Physics(), Vec3{x, 20.0f, 150.0f}, Vec3{x + 1.5f, 20.0f, 150.0f},
+                             cfg.movingLayer);
+    }
+
+    // Ragdoll (50)
+    RagdollSkeletonConfig skelCfg;
+    RagdollBoneConfig pelvis;
+    pelvis.name = "pelvis";
+    pelvis.parentIndex = -1;
+    pelvis.radius = 0.2f;
+    pelvis.halfHeight = 0.25f;
+    skelCfg.bones.push_back(pelvis);
+    RagdollBoneConfig torso;
+    torso.name = "torso";
+    torso.parentIndex = 0;
+    torso.radius = 0.2f;
+    torso.halfHeight = 0.3f;
+    torso.localPosition = Vec3{0, 0.55f, 0};
+    skelCfg.bones.push_back(torso);
+    RagdollSkeleton skeleton(skelCfg);
+    constexpr int kRagdolls = 50;
+    std::vector<RagdollInstance> ragdolls(kRagdolls);
+    for (int i = 0; i < kRagdolls; ++i) {
+        const float x = static_cast<float>(i % 10) * 3.0f - 15.0f;
+        const float z = static_cast<float>(i / 10) * 3.0f + 200.0f;
+        Transform pose;
+        pose.position = Vec3{x, 5.0f, z};
+        ragdolls[static_cast<size_t>(i)].Activate(ctx.Physics(), skeleton, pose, cfg.movingLayer);
+    }
+
+    // Yuzerlik (300)
+    WaterVolume water;
+    water.surfaceY = -50.0f;
+    water.boundsMin = Vec3{-300, -60, 250};
+    water.boundsMax = Vec3{300, 0, 350};
+    ctx.Buoyancy().AddVolume(water);
+    constexpr int kFloaters = 300;
+    for (int i = 0; i < kFloaters; ++i) {
+        const float x = static_cast<float>(i % 20) * 3.0f - 30.0f;
+        const float z = static_cast<float>(i / 20) * 3.0f + 250.0f;
+        JPH::BodyCreationSettings s(new JPH::BoxShape(JPH::Vec3(0.5f, 0.5f, 0.5f)),
+                                    JPH::RVec3(x, -51.0, z), JPH::Quat::sIdentity(),
+                                    JPH::EMotionType::Dynamic, cfg.movingLayer);
+        JPH::BodyID id = bi.CreateAndAddBody(s, JPH::EActivation::Activate);
+        ctx.Buoyancy().TrackBody(id);
+    }
+
+    // Bolge (500 izlenen govde, buz)
+    FrictionZone ice;
+    ice.boundsMin = Vec3{-300, -5, 300};
+    ice.boundsMax = Vec3{300, 5, 400};
+    ctx.Zones().AddZone(ice);
+    constexpr int kZoneBodies = 500;
+    for (int i = 0; i < kZoneBodies; ++i) {
+        const float x = static_cast<float>(i % 25) * 2.0f - 25.0f;
+        const float z = static_cast<float>(i / 25) * 2.0f + 320.0f;
+        JPH::BodyCreationSettings s(new JPH::BoxShape(JPH::Vec3(0.4f, 0.4f, 0.4f)),
+                                    JPH::RVec3(x, 1.0, z), JPH::Quat::sIdentity(),
+                                    JPH::EMotionType::Dynamic, cfg.movingLayer);
+        JPH::BodyID id = bi.CreateAndAddBody(s, JPH::EActivation::Activate);
+        ctx.Zones().TrackBody(ctx.Physics(), id);
+    }
+
+    // Yikilabilir yapi (900 parca)
+    const std::string saveDir =
+        (std::filesystem::temp_directory_path() / "alazforge_bench_combined_destructible").string();
+    std::filesystem::remove_all(saveDir);
+    MaterialDatabase materials = MaterialDatabase::CreateDefault();
+    const MaterialId concrete = materials.FindByName("concrete");
+    DestructibleStructureSystem::Config destCfg;
+    destCfg.savePath = saveDir;
+    DestructibleStructureSystem destructible(destCfg);
+    constexpr int kSide = 30;
+    StructureConfig wall;
+    wall.structureId = 1;
+    wall.worldOrigin = Vec3{-500, 0, 0};
+    wall.pieces.resize(static_cast<size_t>(kSide * kSide));
+    for (int row = 0; row < kSide; ++row) {
+        for (int col = 0; col < kSide; ++col) {
+            PieceConfig& p = wall.pieces[static_cast<size_t>(row * kSide + col)];
+            p.localCenter = Vec3{static_cast<float>(col), static_cast<float>(row), 0.0f};
+            p.halfExtents = Vec3{0.45f, 0.45f, 0.1f};
+            p.material = concrete;
+        }
+    }
+    destructible.RegisterStructure(ctx.Physics(), cfg.nonMovingLayer, materials, wall);
+
+    // LOD: uzakta 500 govde ekleyip izlemeye alalim (referans oyuncu (0,0,0))
+    constexpr int kLodBodies = 500;
+    for (int i = 0; i < kLodBodies; ++i) {
+        const float x = 1000.0f + static_cast<float>(i % 25) * 2.0f;
+        const float z = static_cast<float>(i / 25) * 2.0f;
+        JPH::BodyCreationSettings s(new JPH::BoxShape(JPH::Vec3(0.3f, 0.3f, 0.3f)),
+                                    JPH::RVec3(x, 5.0, z), JPH::Quat::sIdentity(),
+                                    JPH::EMotionType::Dynamic, cfg.movingLayer);
+        JPH::BodyID id = bi.CreateAndAddBody(s, JPH::EActivation::Activate);
+        ctx.LOD().TrackBody(id);
+    }
+
+    ctx.Physics().OptimizeBroadPhase();
+
+    const int totalBodies = 1 + kVehicles + kCloths + kRopes * ropeCfg.segmentCount +
+                            kRagdolls * skeleton.BoneCount() + kFloaters + kZoneBodies +
+                            kSide * kSide + kLodBodies;
+    printf(
+        "[HEPSI BIRLIKTE] toplam govde ~%d (arac=%d, karakter=%d, kumas=%d, halat=%d, "
+        "ragdoll=%d, yuzen=%d, bolge=%d, yikim-parca=%d, lod-uzak=%d)\n",
+        totalBodies, kVehicles, kCharacters, kCloths, kRopes, kRagdolls, kFloaters, kZoneBodies,
+        kSide * kSide, kLodBodies);
+
+    const Vec3 player{0, 0, 0};
+    int explosionCounter = 0;
+    Measure("HEPSI BIRLIKTE",
+            "tam sahne: arac+karakter+kumas+halat+ragdoll+yuzerlik+bolge+"
+            "yikim+LOD (tek Step)",
+            totalBodies, 180, [&] {
+                for (auto& v : vehicles)
+                    v.SetDriverInput(1.0f, 0.0f, 0.0f, 0.0f);
+                for (auto& c : characters) {
+                    c->SetMoveInput(Vec3{0, 0, 1}, false);
+                    c->Update(1.0f / 60.0f);
+                }
+                for (auto& c : cloths)
+                    c->ApplyWind(Vec3{3, 0, 0}, 1.0f / 60.0f);
+
+                // Her 30 adimda bir patlama + birkac mermi (surekli savas sahnesi)
+                if (++explosionCounter % 30 == 0) {
+                    std::vector<ExplosionHit> hits;
+                    ExplosionConfig explCfg;
+                    explCfg.radius = 10.0f;
+                    ExplosionSystem::Detonate(ctx.Physics(), Vec3{0, 1, -100}, explCfg, hits);
+                    BulletParams bullet;
+                    for (int i = 0; i < 20; ++i)
+                        ctx.Ballistics().Fire(bullet, Vec3{0, 50, -100}, Vec3{0, -1, 0}, 2.0f);
+                }
+
+                ctx.Step(1.0f / 60.0f, 1, &player);
+            });
+
+    destructible.Flush();
+    std::filesystem::remove_all(saveDir);
+}
+
 } // namespace
 
 int main() {
@@ -506,6 +706,7 @@ int main() {
     BenchDestructible();
     BenchExplosion();
     BenchLOD();
+    BenchCombinedAll();
 
     printf("\n==================== OZET ====================\n");
     printf("%-14s %-46s %8s %10s %10s\n", "sistem", "senaryo", "varlik", "ort(ms)", "maks(ms)");

@@ -45,7 +45,7 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | Kütüphane | Windows | Linux | İçerik |
 |---|---|---|---|
 | **jolt** | `jolt.dll` + `jolt.lib` | `libjolt.so` | Jolt Physics'in kendisi (submodule, MIT) — ayrı DLL olarak derlenir |
-| **physics** | `physics.dll` + `physics.lib` | `libphysics.so` | Ana fizik: adapter, spatial streaming, terrain deform, balistik, malzeme db, araç fiziği + enkaz kalıcılığı |
+| **physics** | `physics.dll` + `physics.lib` | `libphysics.so` | Ana fizik: adapter, spatial streaming, terrain deform, balistik, malzeme db, araç fiziği + enkaz kalıcılığı, sahne dosya formatı, deterministik replay, sorgu (raycast/overlap/sweep) yardımcıları |
 | **weapons** | `weapons.dll` + `weapons.lib` | `libweapons.so` | Geri tepme, sekme/dağılım (spread), türet mount fiziği |
 | **buoyancy** | `buoyancy.dll` + `buoyancy.lib` | `libbuoyancy.so` | Su hacimleri ve yüzerlik (`JPH::Body::ApplyBuoyancyImpulse` üzerine) |
 | **destructible** | `destructible.dll` + `destructible.lib` | `libdestructible.so` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) + Voronoi tabanlı gerçek zamanlı kırılma (`VoronoiFracture`) |
@@ -377,6 +377,39 @@ yeşil.
 Yeni `spring_damper_joint`/`trigger_volume`/`voronoi_fracture`/
 `softbody_block` testleriyle 33/33 yerel ctest yeşil.
 
+### T2 — entegrasyon araçları: sahne dosyası + deterministik replay + sorgu API'si + örnek uygulama
+
+- **`SceneFile`** (`src/scene/SceneFile`, `physics.dll`) — sahne
+  tanımlarını (gövdeler, malzemeler, yerçekimi) diske kaydedip geri
+  yükler. Dışarıdan bağımsızlık için harici bir JSON kütüphanesi
+  eklemek yerine minimal, elle yazılmış bir ayrıştırıcı (`MiniJson`)
+  kullanılır. `InstantiateScene` gerçek Jolt gövdeleri oluşturup
+  `PhysicsSystem::SetGravity`'yi de uygular — round-trip testi hem
+  dosya formatını hem de gerçek fizik örneklemesini doğruluyor.
+- **`ReplaySystem`** (`src/scene/ReplaySystem`, `physics.dll`) —
+  `ReplayRecorder`/`ReplayPlayback`: uygulanan darbeleri ikili bir
+  formatta kaydedip birebir aynı sırayla yeniden oynatır. Test,
+  doğrudan simülasyon ile kayıt+oynatma'nın bit-bit aynı sonucu
+  ürettiğini VE periyodik checkpoint'lerden hızlı-ileri-sarmanın
+  (60 adım yerine 20) aynı nihai duruma ulaştığını kanıtlıyor —
+  gerçek bir determinizm garantisi, yaklaşık değil.
+- **`QueryHelpers`** (`src/scene/QueryHelpers`, `physics.dll`) —
+  `RaycastClosest`/`OverlapSphere`/`OverlapBox`/`SweepSphere`, gerçek
+  `JPH::NarrowPhaseQuery` çağrıları (`CastRay`/`CollideShape`/
+  `CastShape`) üzerine ince bir katman. Test, ince bir raycast'in
+  kaçırdığı bir engeli hacimli bir küre sweep'inin yakaladığını
+  doğrudan göstererek "hacimli sorgu" avantajını kanıtlıyor.
+- **`examples/alazforge_sample_integration`** — AlazEngine'in yapacağı
+  gibi `AlazForgeContext`'i uçtan uca kullanan, gerçekten çalışan bir
+  konsol demosu: sahne kurulumu + malzeme ataması, balistik ateşleme,
+  çarpışma-ses olaylarını okuma, `RaycastClosest` sorgusu, 120 frame
+  simülasyon, `SaveWorldState`/`RestoreWorldState` round-trip. `ctest`'e
+  kayıtlı değil (bir kütüphane testi değil, entegrasyon referansı) —
+  `build/examples/alazforge_sample_integration` ile doğrudan çalıştırılır.
+
+Yeni `scene_file`/`replay_system`/`query_helpers` testleriyle 36/36
+yerel ctest yeşil.
+
 ## Performans — sistem bazlı ölçüm
 
 `tests/BenchmarkMain.cpp` (`build/tests/alazforge_bench`, `ctest`'e kayıtlı
@@ -516,7 +549,7 @@ zaten gerekmiyor).
 
 ## Test
 
-33 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+36 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -553,6 +586,9 @@ zaten gerekmiyor).
 | `trigger_volume` | Tetikleyici hacim: girdi/çıktı olayı tam bir kez üretilir, izlemeyi bırakınca olay üretilmez |
 | `voronoi_fracture` | Voronoi hücrelerinin gerçek geometrik doğruluğu (her köşe kendi tohumuna en yakın) + darbe itmesiyle gerçek gövde üretimi |
 | `softbody_block` | Tetrahedron ayrıştırmasının tam hacimli olması + düşüp sıkıştıktan sonra hacim korunumu |
+| `scene_file` | Sahne dosyası kaydet/yükle round-trip + gerçek gövde/yerçekimi örneklemesi |
+| `replay_system` | Kayıt+oynatmanın bit-birebir determinizmi + checkpoint hızlı-ileri-sarma |
+| `query_helpers` | Raycast/overlap/sweep sorguları — hacimli sweep'in ince raycast'in kaçırdığını yakalaması |
 
 ## Build
 

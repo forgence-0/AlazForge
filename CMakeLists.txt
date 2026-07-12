@@ -24,6 +24,7 @@ set(TARGET_VIEWER OFF CACHE BOOL "" FORCE)
 set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
 # AlazEngine dinamik CRT kullanıyor; Jolt da uyumlu olsun
 set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
+
 add_subdirectory(external/JoltPhysics/Build)
 set_target_properties(Jolt PROPERTIES OUTPUT_NAME jolt)
 
@@ -45,6 +46,10 @@ add_library(physics SHARED
     src/vehicle/TrackBeltSystem.cpp
     src/ballistics/BallisticsSystem.cpp
     src/wind/WindSystem.cpp
+    src/scene/MiniJson.cpp
+    src/scene/SceneFile.cpp
+    src/scene/ReplaySystem.cpp
+    src/scene/QueryHelpers.cpp
 )
 
 target_include_directories(physics PUBLIC
@@ -188,3 +193,6 @@ target_link_libraries(context PUBLIC zones buoyancy lod audio debugdraw destruct
 # ── Testler ─────────────────────────────────────────────────────────
 enable_testing()
 add_subdirectory(tests)
+
+# ── Örnekler ────────────────────────────────────────────────────────
+add_subdirectory(examples)

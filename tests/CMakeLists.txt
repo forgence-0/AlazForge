@@ -108,6 +108,21 @@ target_link_libraries(alazforge_test_softbody_block PRIVATE cloth)
 
 add_test(NAME softbody_block COMMAND alazforge_test_softbody_block)
 
+add_executable(alazforge_test_scene_file SceneFileTest.cpp)
+target_link_libraries(alazforge_test_scene_file PRIVATE physics)
+
+add_test(NAME scene_file COMMAND alazforge_test_scene_file)
+
+add_executable(alazforge_test_replay_system ReplaySystemTest.cpp)
+target_link_libraries(alazforge_test_replay_system PRIVATE physics)
+
+add_test(NAME replay_system COMMAND alazforge_test_replay_system)
+
+add_executable(alazforge_test_query_helpers QueryHelpersTest.cpp)
+target_link_libraries(alazforge_test_query_helpers PRIVATE physics)
+
+add_test(NAME query_helpers COMMAND alazforge_test_query_helpers)
+
 add_executable(alazforge_test_realism RealismTest.cpp)
 target_link_libraries(alazforge_test_realism PRIVATE weapons)
 

@@ -34,11 +34,18 @@ jobs:
           path: build/*.so
           if-no-files-found: warn
 
-      - name: Upload compile_commands.json
+      # generated_include/*/export.h dahil edilmezse tidy-check'te her
+      # dosya "export.h bulunamadi" derleyici hatasiyla bastan basarisiz
+      # olur (GenerateExportHeader ciktisi compile_commands.json'da
+      # referans veriliyor ama diskte yoksa clang-tidy hicbir seyi
+      # analiz edemez) -- gercek CI'da yakalandi.
+      - name: Upload compile_commands.json + generated headers
         uses: actions/upload-artifact@v4
         with:
           name: compile-commands
-          path: build/compile_commands.json
+          path: |
+            build/compile_commands.json
+            build/generated_include
 
   format-check:
     runs-on: ubuntu-latest

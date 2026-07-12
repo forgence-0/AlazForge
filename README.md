@@ -7,9 +7,9 @@ edilir, kendi mimarisiyle genişletilir.
 
 ## Kütüphaneler
 
-Derleme çıktısı 7 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
-`destructible`/`ragdoll`/`context` yalnızca `physics`'e bağımlıdır, birbirlerine
-değil; `physics` da yalnızca `jolt`'a bağımlıdır:
+Derleme çıktısı 8 ayrı paylaşımlı kütüphanedir. `weapons`/`buoyancy`/
+`destructible`/`ragdoll`/`context`/`sportsball` yalnızca `physics`'e
+bağımlıdır, birbirlerine değil; `physics` da yalnızca `jolt`'a bağımlıdır:
 
 ```
 jolt.dll  <-  physics.dll  <-  weapons.dll
@@ -17,6 +17,7 @@ jolt.dll  <-  physics.dll  <-  weapons.dll
                             <-  destructible.dll
                             <-  ragdoll.dll
                             <-  context.dll
+                            <-  sportsball.dll
 ```
 
 Her hedef `add_library(... SHARED ...)` ile tanımlı; Windows/MSVC'de bu,
@@ -32,13 +33,13 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | **destructible** | `destructible.dll` + `destructible.lib` | `libdestructible.so` | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
 | **ragdoll** | `ragdoll.dll` + `ragdoll.lib` | `libragdoll.so` | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
 | **context** | `context.dll` + `context.lib` | `libcontext.so` | `AlazForgeContext` — Jolt yaşam döngüsü + `physics` alt sistemlerini saran facade (ECS bridge placeholder) |
+| **sportsball** | `sportsball.dll` + `sportsball.lib` | `libsportsball.so` | Topla oynanan sporlar (futbol, basketbol, hentbol, Amerikan futbolu vb.) için genel top fiziği: sürükleme (drag) + Magnus/spin etkisi |
 
 > `.lib` dosyaları Windows'ta consumer'ın (AlazEngine) derleme zamanında DLL'e
 > bağlanması için kullanılan import kütüphaneleridir — gerçek kod içermezler,
-> yükleme zamanında asıl `.dll` gerekir. Jolt'un `jolt.dll` olarak SHARED
-> derlenmesi bu geliştirme ortamında (submodule checkout edilmediği için)
-> doğrulanamadı — Jolt'un kendi `JPH_SHARED_LIBRARY`/`JPH_EXPORT` desteğine
-> dayanıyor, ilk derlemede teyit edilmeli.
+> yükleme zamanında asıl `.dll` gerekir. Tüm kütüphaneler (Jolt'un `jolt.dll`
+> olarak SHARED derlenmesi dahil) gerçek submodule checkout'uyla lokal olarak
+> derlenip 14/14 testle doğrulandı.
 
 ## Modüller
 
@@ -55,6 +56,7 @@ CMake tarafından hem `.dll`'i hem de onunla eşleşen import `.lib`'ini otomati
 | `src/destructible` | destructible | Ayrık parça grafiği tabanlı yıkılabilir yapılar (kademeli çökme) |
 | `src/ragdoll` | ragdoll | Jolt'un ragdoll sistemini saran iskelet + örnek sınıfları |
 | `src/context` | context | `AlazForgeContext` — Jolt yaşam döngüsü + tüm alt sistemleri saran facade (ECS bridge placeholder) |
+| `src/sportsball` | sportsball | Topla oynanan sporlar için genel top fiziği (sürükleme + Magnus/spin) |
 
 Detaylı plan ve faz sıralaması: [docs/AlazForge_ClaudeCode_Brief.md](docs/AlazForge_ClaudeCode_Brief.md)
 
@@ -73,12 +75,13 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 
 ### Faz A — Altyapı
 
-- Proje, header-only `INTERFACE` kütüphanesinden 7 ayrı paylaşımlı kütüphaneye
-  dönüştürüldü — `jolt`, `physics` ve 5 yardımcı DLL (`weapons`, `buoyancy`,
-  `destructible`, `ragdoll`, `context`); bkz. [Kütüphaneler](#kütüphaneler).
-  Her biri kendi `GenerateExportHeader` makrosuyla (`PHYSICS_API`,
-  `WEAPONS_API`, `BUOYANCY_API`, `DESTRUCTIBLE_API`, `RAGDOLL_API`,
-  `CONTEXT_API`) public sınıflarını dışa açıyor.
+- Proje, header-only `INTERFACE` kütüphanesinden 8 ayrı paylaşımlı kütüphaneye
+  dönüştürüldü — `jolt`, `physics` ve 6 yardımcı DLL (`weapons`, `buoyancy`,
+  `destructible`, `ragdoll`, `context`, `sportsball`); bkz.
+  [Kütüphaneler](#kütüphaneler). Her biri kendi `GenerateExportHeader`
+  makrosuyla (`PHYSICS_API`, `WEAPONS_API`, `BUOYANCY_API`,
+  `DESTRUCTIBLE_API`, `RAGDOLL_API`, `CONTEXT_API`, `SPORTSBALL_API`)
+  public sınıflarını dışa açıyor.
 - `ChunkStreamSystem` destructor'ındaki exception-safety hatası (disk
   hatasında olası `std::terminate()`) düzeltildi.
 - `.clang-format` / `.clang-tidy` eklendi, tüm kod tabanı reformat edildi.
@@ -101,15 +104,18 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
   job sistemi, `PhysicsSystem::Init`) ve tüm alt sistemleri saran facade;
   gelecekteki AlazEngine ECS entegrasyonu için bilinçli olarak minimal
   tutulan bir başlangıç noktası.
-
-> Bu geliştirme ortamında Jolt submodule checkout edilmediği için `TurretMount`,
-> `BuoyancySystem` ve ragdoll modülleri gerçek Jolt header'larına karşı derlenip
-> doğrulanamadı — ilgili dosyalarda üst bilgi yorumlarıyla işaretlendi.
-> Submodule mevcut olduğunda (CI'da) ilk derlemede teyit/düzeltme gerekebilir.
+- **Spor topu fiziği** (`src/sportsball`) — futbol, basketbol, hentbol,
+  Amerikan futbolu gibi topla oynanan sporlar için genel top fiziği:
+  aerodinamik sürükleme (drag) + Magnus etkisi (spin'e bağlı kaldırma —
+  frikik/faul atışı eğrisi, backspin şut, spiral pas). Sporlara özel hazır
+  preset yok — kütle/yarıçap/sürtünme/sekme/drag gibi tüm parametreler
+  `BallConfig` ile oyunu yapan tarafından belirlenir. Amerikan futbolu topu
+  gibi küresel olmayan toplar `elongation` alanıyla (prolate spheroid,
+  `JPH::ScaledShape` üzerine) desteklenir.
 
 ## Test
 
-13 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
+14 test, `ctest`'e kayıtlı (`build/tests/alazforge_test_*`):
 
 | Test | Kapsam |
 |---|---|
@@ -126,11 +132,12 @@ Altı fazın tamamı çalışır durumda ve testleri geçiyor:
 | `destructible_structure` | Kademeli çökme (brittleness eşiği) |
 | `ragdoll` | İki kemikli ragdoll zincirinin tutarlılığı |
 | `alazforge_context` | Jolt yaşam döngüsü + aktif gövde snapshot'ı |
+| `sportsball` | Top fiziği: Magnus etkisiyle yanal sapma, sürüklemeyle yavaşlama, elips top sanity-check |
 
 ## Build
 
-AlazForge 7 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
-`buoyancy`, `destructible`, `ragdoll`, `context`). Bkz.
+AlazForge 8 paylaşımlı kütüphane üretir (`jolt`, `physics`, `weapons`,
+`buoyancy`, `destructible`, `ragdoll`, `context`, `sportsball`). Bkz.
 [Kütüphaneler](#kütüphaneler).
 
 ```

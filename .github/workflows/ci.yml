@@ -9,7 +9,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -28,7 +28,7 @@ jobs:
       # 90 gun sonra silinir (GitHub Actions artifact retention).
       - name: Upload built libraries
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: alazforge-libraries-${{ github.sha }}
           path: build/*.so
@@ -40,7 +40,7 @@ jobs:
       # referans veriliyor ama diskte yoksa clang-tidy hicbir seyi
       # analiz edemez) -- gercek CI'da yakalandi.
       - name: Upload compile_commands.json + generated headers
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compile-commands
           path: |
@@ -50,7 +50,7 @@ jobs:
   format-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install clang-format-18
         run: sudo apt-get update && sudo apt-get install -y clang-format-18
@@ -65,11 +65,11 @@ jobs:
     needs: build-and-test
     continue-on-error: true # bilgilendirici — bulgular henüz triyaj edilmedi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: compile-commands
           path: build

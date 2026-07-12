@@ -62,3 +62,8 @@ add_executable(alazforge_test_context AlazForgeContextTest.cpp)
 target_link_libraries(alazforge_test_context PRIVATE context)
 
 add_test(NAME alazforge_context COMMAND alazforge_test_context)
+
+add_executable(alazforge_test_sportsball BallPhysicsSystemTest.cpp)
+target_link_libraries(alazforge_test_sportsball PRIVATE sportsball)
+
+add_test(NAME sportsball COMMAND alazforge_test_sportsball)

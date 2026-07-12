@@ -2,6 +2,7 @@
 
 #include "core/JoltAdapter.h"
 
+#include <Jolt/Core/FPException.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 
@@ -229,13 +230,9 @@ std::vector<JPH::BodyID> FractureVoronoi(JPH::PhysicsSystem& physics, JPH::Objec
         const JPH::ShapeSettings::ShapeResult shapeResult = shapeSettings.Create();
         if (shapeResult.HasError()) continue; // dejenere (duzlemsel/cok kucuk) hucre -- atla
 
-        // Kutle/atalet ozelliklerini govde olusturulmadan ONCE (ana is
-        // parcacigi uzerinde, Jolt'un istisna tuzagi devrede degilken)
-        // dogrula -- NaN/Inf uretebilecek neredeyse-tekil govdeler fizik
-        // adimlamasina hic girmeden elenir. Asal atalet momentlerine
-        // ayristirma (Jolt'un kendi yontemi) hem finiteness hem de
-        // "neredeyse tekil" (fizik cozucusu tersini alirken patlayabilecek
-        // sifira yakin ozdeger) durumunu tek seferde yakalar.
+        // Dejenere/neredeyse-tekil govdeleri (NaN/Inf kutle ya da sifira
+        // yakin asal atalet momenti -- fizik cozucusu tersini alirken
+        // patlayabilir) govde hic olusturulmadan ele -- savunma amacli.
         const JPH::MassProperties massProps = shapeResult.Get()->GetMassProperties();
         if (!std::isfinite(massProps.mMass) || massProps.mMass <= 0.0f) continue;
 
@@ -252,13 +249,39 @@ std::vector<JPH::BodyID> FractureVoronoi(JPH::PhysicsSystem& physics, JPH::Objec
             principalMoments.GetZ() < kMinPrincipalMoment)
             continue;
 
+        // mOverrideMassProperties varsayilaninda (CalculateMassAndInertia)
+        // birakiliyor: hem kutle hem atalet, sekle ve yukarida verilen
+        // yogunluga gore Jolt tarafindan hesaplanir. (CalculateInertia
+        // modu farkli bir anlama gelir -- kutleyi shapeSettings'ten degil
+        // mMassPropertiesOverride'dan alir; o alan doldurulmadan
+        // kullanilirsa varsayilan 0 kutleye, dolayisiyla SetMassProperties
+        // icinde gercek bir 1/0 istisnasina yol acar -- bu aslen Windows
+        // CI'daki cokmenin kok nedeniydi.)
         JPH::BodyCreationSettings bodySettings(shapeResult.Get(), JPH::RVec3(centroid),
                                                JPH::Quat::sIdentity(), JPH::EMotionType::Dynamic,
                                                layer);
-        bodySettings.mOverrideMassProperties = JPH::EOverrideMassProperties::CalculateInertia;
         bodySettings.mUserData = config.material;
 
-        const JPH::BodyID id = bi.CreateAndAddBody(bodySettings, JPH::EActivation::Activate);
+        // Ek savunma katmani: Jolt'un kendi MassProperties::
+        // DecomposePrincipalMomentsOfInertia'si cikti Vec3'unun yalnizca
+        // 3 (X/Y/Z) SIMD kanalini yazar, 4. (kullanilmayan/dolgu) kanal
+        // BASLATILMADAN kalabilir; SetMassProperties bu vektorun TAMAMINI
+        // (4 kanal birden) Reciprocal() ile tersine cevirdiginden, sifira
+        // denk gelen rastgele stack copesi teorik olarak baska bir 1/0
+        // istisnasi tetikleyebilir -- Jolt'un kendi dokumante edilmemis ic
+        // davranisi, cagiran kodun girdisinden bagimsiz. Global istisna
+        // tuzagini kapatmak yerine bu TEK cagriyi Jolt'un kendi RAII
+        // istisna-maskeleme siniflariyla (Jolt'un kendi
+        // EigenValueSymmetric'inin gecici/beklenen istisnalari bastirmak
+        // icin kullandigi ayni mekanizma) sarmalamak, guvenlik agini
+        // baska hicbir yerde devre disi birakmadan sorunu tam olarak bu
+        // bilinen senaryoya daraltir.
+        JPH::BodyID id;
+        {
+            JPH::FPExceptionDisableInvalid disableInvalid;
+            JPH::FPExceptionDisableDivByZero disableDivByZero;
+            id = bi.CreateAndAddBody(bodySettings, JPH::EActivation::Activate);
+        }
         if (id.IsInvalid()) continue;
 
         JPH::Vec3 outward = centroid - impact;

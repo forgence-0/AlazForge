@@ -91,7 +91,12 @@ int main() {
     (void)staticFloor;
 
     VoronoiFractureConfig cfg;
-    cfg.impactImpulseN = 500.0f;
+    // Parcalar gercek yogunluk*hacimden hesaplanan kutleye sahip (10 birimlik
+    // kutu, varsayilan 1000 kg/m^3 yogunlukla -- parca basina ~1.5-2.3e5 kg).
+    // Boyle agir parcalari 10 fizik adiminda yercekiminin (9.81 m/s^2) altina
+    // ezilmeden gercekten disari itebilmek icin darbe impulsu da orantili
+    // buyuklukte olmali.
+    cfg.impactImpulseN = 5.0e6f;
     const Vec3 impactPoint{-5.0f, 0.0f, 0.0f}; // kutunun sol yuzunden vurulmus gibi
 
     const std::vector<JPH::BodyID> bodies =
